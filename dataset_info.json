@@ -1,0 +1,77 @@
+{
+  "source": "UCI Air Quality Dataset (ID 360)",
+  "source_file": "data/raw/AirQualityUCI.csv",
+  "quality": {
+    "physical_csv_rows_including_header_and_blank_tail": 9472,
+    "documented_rows_including_header": 9358,
+    "measurement_observations": 9357,
+    "blank_trailing_rows": 114,
+    "invalid_timestamp_rows": 0,
+    "duplicate_timestamps_removed": 0,
+    "missing_by_variable_after_minus_200_conversion": {
+      "NOx(GT)": 1639,
+      "NO2(GT)": 1642,
+      "CO(GT)": 1683,
+      "NMHC(GT)": 8443,
+      "PT08.S1(CO)": 366,
+      "C6H6(GT)": 366,
+      "PT08.S2(NMHC)": 366,
+      "PT08.S3(NOx)": 366,
+      "PT08.S4(NO2)": 366,
+      "PT08.S5(O3)": 366,
+      "T": 366,
+      "RH": 366,
+      "AH": 366
+    },
+    "source_sha256": "13277ae5d8581e80b7be09d47c7d3d06fe9b8e957078f2cf6e859f955e62f996"
+  },
+  "split_strategy": "chronological 70/15/15 on unique source hours before prompt generation",
+  "random_seed": null,
+  "label_thresholds_fitted_on": "train only",
+  "thresholds": {
+    "CO": {
+      "q25": 1.1,
+      "q75": 2.8,
+      "unit": "mg/m3",
+      "training_non_missing": 5066
+    },
+    "NO2": {
+      "q25": 69.0,
+      "q75": 123.0,
+      "unit": "ug/m3",
+      "training_non_missing": 5096
+    },
+    "benzene": {
+      "q25": 5.1,
+      "q75": 14.6,
+      "unit": "ug/m3",
+      "training_non_missing": 6401
+    }
+  },
+  "splits": {
+    "train": {
+      "source_hours": 6549,
+      "examples": 13098,
+      "date_start": "2004-03-10T18:00:00",
+      "date_end": "2004-12-08T14:00:00",
+      "file": "data/processed/train.csv",
+      "sha256": "d28759a9816ad2d50226fbd2df0eea69e2cbdf64ed04d7127f9e3d9316a587a4"
+    },
+    "validation": {
+      "source_hours": 1404,
+      "examples": 2808,
+      "date_start": "2004-12-08T15:00:00",
+      "date_end": "2005-02-05T02:00:00",
+      "file": "data/processed/validation.csv",
+      "sha256": "d684890c81a02fd6f4aa31c2576ce804a34e74764fedc8325bfe06f50b2313d0"
+    },
+    "test": {
+      "source_hours": 1404,
+      "examples": 2808,
+      "date_start": "2005-02-05T03:00:00",
+      "date_end": "2005-04-04T14:00:00",
+      "file": "data/processed/test.csv",
+      "sha256": "470f28ced793f4504bfd3050a9873a5dc28875408de1d7a853f84336649617f9"
+    }
+  }
+}

@@ -1,3 +1,4 @@
+
 name: Data validation
 
 on:
@@ -9,15 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # The original UCI CSV is not committed to this repository.
-      # Validate the published, committed splits without assuming raw data exists.
-      - name: Verify committed processed dataset
+
+      - name: Verify processed dataset
         run: |
-          python -c "from pathlib import Path; paths = [Path('data/processed') / (name + '.csv') for name in ('train', 'validation', 'test')]; assert all(p.is_file() for p in paths), 'Missing processed dataset split'; print('All three processed splits found')"
-      - name: Run invariant tests
+          python -c "from pathlib import Path; paths = [Path('data/processed') / (name + '.csv') for name in ('train', 'validation', 'test')]; assert all(p.is_file() for p in paths), 'Missing dataset split'; print('All three splits found')"
+
+      - name: Run tests
         run: python -m unittest discover -s tests -v
+
       - name: Compile source
         run: python -m py_compile src/preprocess.py src/train.py src/evaluate.py app.py

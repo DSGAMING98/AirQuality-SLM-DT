@@ -1,310 +1,427 @@
-# AirQuality SLM v1.1 | Trained from scratch and verified
+# AirQuality SLM
+### Applying Design Thinking to Build a Small Language Model on the UCI Air Quality Dataset
 
-**Current release: 15 November 2026.** The working model is a **30,301,632-parameter Qwen-inspired, decoder-only Small Language Model trained from random initialization**, **not** a fine-tuned Qwen model and **not** the earlier FLAN-T5 proposal.
+**Project status (15 November 2026):** The dataset validation and preprocessing pipeline is complete. A custom **30,301,632-parameter, decoder-only, Qwen-inspired Small Language Model (SLM) has been trained from scratch** and published. Its standalone safe-inference layer passed six selected live-checkpoint tests in an independent Python process. The existing Streamlit app in this GitHub branch is **legacy FLAN-T5 code**, not yet the verified interface for this model.
 
-| Resource | Link |
-|---|---|
-| Trained public checkpoint, tokenizer, configuration, training graph | [Hugging Face model](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) |
-| Chronologically split training/validation/test instruction dataset | [Hugging Face dataset](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) |
-| Standalone validated inference | [safe_inference.py](safe_inference.py) |
-| Full v1.1 methods, findings, limitations | [RELEASE_NOTES_v1.1.md](RELEASE_NOTES_v1.1.md) |
-| Reproduction and publication workflow | [PUBLISHING.md](PUBLISHING.md) |
+This repository has **two distinct engineering phases**:
 
-## Verified training and test evidence
+| Phase | Goal | Main deliverables | Status |
+|---|---|---|---|
+| **1. Data validation and preprocessing** | Turn historical sensor data into leakage-aware, auditable instruction/answer examples | `src/preprocess.py`, split CSVs, `dataset_info.json`, data tests, Hugging Face dataset | Complete |
+| **2. From-scratch SLM and safe inference** | Train a real language model on those examples, evaluate it and guard against unsupported requests | `airquality_slm_model.py`, published `model.pt`, `metrics.json`, `safe_inference.py`, safety tests | Trained and independently tested |
 
-- **Architecture:** three Transformer layers, RoPE, grouped-query attention, RMSNorm and SwiGLU, using the Qwen3 tokenizer (no pretrained Qwen weights).
-- **Full experiment:** 4,000 optimizer updates; 13,098 training, 2,808 validation, 2,808 held-out test instruction examples loaded.
-- **Loss:** full validation cross-entropy **0.0091907**, held-out test cross-entropy **0.0081567**. These numbers are *not* test-set classification accuracy.
-- **Reproducibility:** remote model.pt downloaded independently, strictly loaded with the custom model code, and tested with CPU inference.
-- **Six selected model-only prompts:** **4/6 passed** (3 positive correct; unsupported/invalid input failure cases documented).
-- **Six selected safe-inference prompts:** **6/6 passed**, including the **standalone fresh-process test on CPU with exit code 0** on 2026-11-15.
-- **Offline validator unit tests:** **9/9 passed**. These are narrow tests; neither the six prompts nor the loss estimates prove general real-world reliability.
+> **Not an official AQI system.** Labels such as *low*, *typical* and *elevated* are **relative to training-set quartiles**. The system does not provide real-time readings, future forecasts, legal air-quality grades, source attribution or health-safety decisions.
 
-## Run the current release
+## Repository and published artifacts
 
-Requires Python with PyTorch, Transformers 4.x, and huggingface_hub:
-
-~~~bash
-python -m pip install torch "transformers>=4.51,<5" "huggingface_hub>=0.30"
-python safe_inference.py --self-test --device cpu
-python -m unittest discover -s tests -p test_safe_inference.py -v
-~~~
-
-The CLI downloads the public model on first use. It rejects malformed sensor readings, out-of-period timestamps and unsupported future official-AQI/health requests **before** calling the model, and abstains on incorrectly formatted model responses. The SLM weights are unchanged. See [release notes](RELEASE_NOTES_v1.1.md) for single-prompt commands and limitations.
-
-**Boundaries:** Labels low/typical/elevated are relative to quartiles from the training distribution. They are *not* official AQI categories, live forecasts or medical/health-safety guidance.
-
----
-
-## Historical initial project plan (superseded)
-
-**Documentation below is preserved from the original dataset-pipeline/FLAN-T5 proposal.** Its statements that training was blocked or the model was unpublished describe the **earlier plan**, not the current MiniQwen training status. The old src/train.py, src/evaluate.py and app.py target FLAN-T5 and have not been verified against the new trained checkpoint. Prefer the v1.1 files linked above for current execution.
-
----
-
-# AirQuality-SLM
-
-### Design Thinking for Explainable Historical Air-Quality Interpretation
-
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Model FLAN-T5-small](https://img.shields.io/badge/Model-FLAN--T5--small-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/google/flan-t5-small)
-[![Dataset UCI Air Quality](https://img.shields.io/badge/Dataset-UCI%20Air%20Quality-00599C)](https://archive.ics.uci.edu/dataset/360/air+quality)
-[![Data on Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-prajwal90%2FAirQuality--SLM--Processed-yellow)](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed)
-
-> A reproducible research project that transforms the UCI Air Quality time series into leakage-safe, language-based supervision for fine-tuning a compact encoder-decoder language model.
-
-## Evidence dashboard
-
-This table is the authoritative boundary between **measured work** and **planned model work** as of **12 November 2026**. The repository never substitutes expected values for experimental results.
-
-| Deliverable | Verifiable evidence | Status |
-|---|---|:---:|
-| Source-data audit and preprocessing | `src/preprocess.py`, raw-data SHA-256, preprocessing log | ✅ Completed |
-| Chronological train/validation/test split | 13,098 / 2,808 / 2,808 instruction pairs; disjoint record IDs | ✅ Completed |
-| Automated data-invariant checks | `tests/` and documented split boundaries | ✅ Passed |
-| Hugging Face dataset publication | Public dataset with three split files and metadata | ✅ Published |
-| FLAN-T5-small training implementation | `src/train.py` and fixed configuration | ✅ Implemented |
-| Fine-tuned model checkpoint | Requires missing dependencies and base-model download | ⛔ Not Run |
-| Held-out model metrics and six prompt outputs | Requires a trained checkpoint | ⛔ Not Run |
-| Streamlit model inference | UI implemented; launch requires model dependencies/checkpoint | ⚠️ Not Verified |
-
-**Current conclusion:** the dataset engineering and supervision pipeline are complete and auditable. FLAN-T5-small fine-tuning and model-dependent evaluation are not claimed as completed. See [Training methodology](#training-methodology) for the recorded blocker.
-
-## Table of contents
-
-1. [Project overview](#project-overview)
-2. [Design thinking methodology](#design-thinking-methodology)
-3. [Dataset documentation](#dataset-documentation)
-4. [Processing and splitting](#processing-and-splitting)
-5. [SLM architecture](#slm-architecture)
-6. [Training methodology](#training-methodology)
-7. [Validation, testing, and results](#validation-testing-and-results)
-8. [Prompt engineering](#prompt-engineering)
-9. [System architecture](#system-architecture)
-10. [Application](#application)
-11. [Project structure](#project-structure)
-12. [Installation and reproduction](#installation-and-reproduction)
-13. [Hugging Face and GitHub](#hugging-face-and-github)
-14. [Limitations and future work](#limitations-and-future-work)
-15. [Requirement evidence matrix](#requirement-evidence-matrix)
-16. [References](#references)
-17. [Conclusion](#conclusion)
-
-## Project overview
-
-**Official title:** *Applying Design Thinking to Build a Small Language Model on the UCI Air Quality Dataset*.
-
-**Abstract.** This project converts hourly numerical measurements from the UCI Air Quality dataset into instruction-response pairs for a compact text-to-text model. The proposed model, `google/flan-t5-small`, learns to classify CO, NO₂, and benzene readings relative to quartiles fitted only on the training period and to express the same result in a constrained factual sentence. The implemented pipeline preserves time order, converts the UCI `-200` missing marker to null, prevents source-hour overlap, and records hashes and split boundaries. Dataset preparation succeeded. Model fine-tuning and measured model evaluation have not yet run in this environment.
-
-The problem is not ordinary numerical regression. A language model requires token sequences and target text. Therefore deterministic preprocessing converts selected measurements into natural-language instructions and supervised answers. This rule-based conversion creates the training signal; it is not itself an SLM and must not be presented as model inference.
-
-**Objectives** are to build a reproducible data pipeline, create leakage-safe train/validation/test splits, fine-tune a genuine SLM, measure held-out performance, expose inference through Streamlit, and publish auditable dataset/model repositories when credentials and dependencies are available.
-
-**Scope.** The system describes historical measurements relative to this dataset's training distribution. It does not calculate an official AQI, diagnose health risk, identify pollution sources, or provide real-time monitoring.
-
-## Design thinking methodology
-
-| Stage | Evidence and decision |
-|---|---|
-| Empathize | Personas: students who need understandable sensor readings, instructors who need reproducible evidence, and developers who need a small locally deployable model. Their pain points are opaque sensor columns, missing values, leakage, and unsupported claims. |
-| Define | “How might we turn historical measurements into cautious natural-language interpretations while retaining provenance and preventing future data from influencing training?” |
-| Ideate | Considered threshold-only UI, conventional classifier, regression, and text-to-text SLM. FLAN-T5-small was chosen because the assignment requires language output and the model is compact enough for an 8 GB consumer GPU. |
-| Prototype | Implemented CSV parsing, chronological splits, train-only quartiles, two instruction types, FLAN-T5 training/evaluation scripts, and a Streamlit client. |
-| Test | Data invariants passed. Model-dependent tests remain blocked until dependencies and the base checkpoint are available. See [DESIGN_THINKING.md](DESIGN_THINKING.md). |
-
-## Dataset documentation
-
-Source: [UCI Machine Learning Repository, Air Quality (ID 360)](https://archive.ics.uci.edu/dataset/360/air+quality), DOI `10.24432/C59K5F`. Measurements cover March 2004 to April 2005 in an Italian city. UCI metadata reports **9,358 instances**; the supplied CSV yields **9,357 valid timestamped measurement observations** after excluding the header and 114 completely blank trailing rows. Both figures are reported explicitly so the repository does not conceal the one-row discrepancy between repository metadata and the physical file.
-
-| Variable | Meaning | Unit / encoding |
+| Artifact | Location | What is verified |
 |---|---|---|
-| Date | Measurement date | `DD/MM/YYYY` |
-| Time | Measurement time | `HH.MM.SS` |
-| CO(GT) | Reference carbon monoxide | mg/m³ |
-| PT08.S1(CO) | Tin-oxide sensor nominally targeted to CO | sensor response (arbitrary units) |
-| NMHC(GT) | Reference non-methane hydrocarbons | µg/m³ |
-| C6H6(GT) | Reference benzene | µg/m³ |
-| PT08.S2(NMHC) | Tin-oxide sensor nominally targeted to NMHC | sensor response (arbitrary units) |
-| NOx(GT) | Reference nitrogen oxides | ppb |
-| PT08.S3(NOx) | Tungsten-oxide sensor nominally targeted to NOx | sensor response (arbitrary units) |
-| NO2(GT) | Reference nitrogen dioxide | µg/m³ |
-| PT08.S4(NO2) | Tungsten-oxide sensor nominally targeted to NO₂ | sensor response (arbitrary units) |
-| PT08.S5(O3) | Indium-oxide sensor nominally targeted to O₃ | sensor response (arbitrary units) |
-| T | Temperature | °C |
-| RH | Relative humidity | % |
-| AH | Absolute humidity | g/m³ (as documented by UCI) |
+| GitHub source and this documentation | [DSGAMING98/AirQuality-SLM-DT](https://github.com/DSGAMING98/AirQuality-SLM-DT) | Source, data pipeline, custom model class, CLI and tests |
+| Processed dataset | [prajwal90/AirQuality-SLM-Processed](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) | Published train/validation/test instructions |
+| Trained SLM | [prajwal90/AirQuality-SLM-Scratch-Qwen](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) | Published custom state dict, config, tokenizer, metrics and training plot |
+| Standalone release | [safe_inference.py](safe_inference.py) and [RELEASE_NOTES_v1.1.md](RELEASE_NOTES_v1.1.md) | Selected live test: **6/6**; validator unit tests: **9/9** |
+| Detailed dataset provenance | [DATASET_CARD.md](DATASET_CARD.md), [data/processed/dataset_info.json](data/processed/dataset_info.json) | Source audit, missingness, timestamps, split hashes |
 
-After converting `-200` to missing, the largest gap is `NMHC(GT)` (8,443 of 9,357 observations). CO has 1,683 missing, NO₂ 1,642, NOx 1,639, and each sensor/meteorological series in the common outage group has 366. Full provenance and limitations are in [DATASET_CARD.md](DATASET_CARD.md) and machine-readable values are in [`data/processed/dataset_info.json`](data/processed/dataset_info.json).
-
-## Processing and splitting
-
-[`src/preprocess.py`](src/preprocess.py) performs the following:
-
-1. Reads the semicolon-delimited CSV using UTF-8 BOM handling and preserves decimal commas.
-2. Validates all 15 required columns.
-3. Parses `Date + Time` into a sortable timestamp.
-4. Converts blanks, non-finite values, and the UCI `-200` sentinel to `None`.
-5. Deduplicates by timestamp, retaining the first observation. No duplicates were found.
-6. Sorts chronologically and splits source hours **before** prompt generation.
-7. Fits 25th/75th percentile thresholds only on non-missing training readings.
-8. Generates one `classify` and one `explain` example per source hour.
-9. Writes three CSVs, hashes, boundaries, missing counts, and validation evidence.
-
-| Split | Ratio | Source hours | Instruction examples | Period |
-|---|---:|---:|---:|---|
-| Train | 70.0% | 6,549 | 13,098 | 2004-03-10 18:00 to 2004-12-08 14:00 |
-| Validation | 15.0% | 1,404 | 2,808 | 2004-12-08 15:00 to 2005-02-05 02:00 |
-| Test | 15.0% | 1,404 | 2,808 | 2005-02-05 03:00 to 2005-04-04 14:00 |
-
-No random seed applies to splitting because it is deterministic and chronological. Chronological separation imitates deployment on later observations and prevents future-period distribution information from leaking backward. Random splitting would mix adjacent hours from the same sensor campaign and overstate generalization. Seed `42` is reserved for model training.
-
-Train-only thresholds are CO `q25=1.1`, `q75=2.8` mg/m³; NO₂ `69`, `123` µg/m³; and benzene `5.1`, `14.6` µg/m³. These are descriptive dataset quartiles, not safety limits.
-
-## SLM architecture
-
-`google/flan-t5-small` is an instruction-tuned encoder-decoder Transformer with approximately **80 million parameters**. The encoder creates contextual representations of the input instruction; the autoregressive decoder generates the target answer token by token. T5 uses a SentencePiece tokenizer and a text-to-text interface.
-
-It qualifies as a Small Language Model in this project because its parameter count is orders of magnitude below multi-billion-parameter LLMs and it can be fine-tuned/inferred on consumer hardware. It was preferred over a decoder-only LLM for lower compute cost, constrained short outputs, mature Hugging Face support, and alignment with conditional generation. Configured maximum lengths are 256 source tokens and 64 target tokens.
-
-## Training methodology
-
-The implemented configuration is FLAN-T5-small full fine-tuning with AdamW (the Trainer default), learning rate `5e-5`, batch size `8`, three epochs, seed `42`, FP16 when CUDA is available, validation and checkpointing each epoch, two-checkpoint retention, and best-model restoration. Hardware detected: NVIDIA GeForce RTX 4060 Laptop GPU (8 GB). Intended software is Python 3.12, PyTorch 2.x, Transformers 4.x, Datasets 3/4.x, Accelerate 1.x, and SentencePiece 0.2.x.
-
-**Measured training status: Blocked / Not Run.** PyTorch 2.14.1+cu126 is installed and CUDA hardware is present, but `transformers`, `datasets`, `accelerate`, `sentencepiece`, and `streamlit` are absent. Dependency installation failed because DNS could not resolve `pypi.org`; the FLAN-T5-small checkpoint is not cached. Consequently there are no checkpoints or loss curves. See [TRAINING_REPORT.md](TRAINING_REPORT.md).
-
-## Validation, testing, and results
-
-### Completed data checks
-
-- Parsed 9,357 dated observations from the supplied source.
-- Verified zero invalid timestamps and zero duplicate timestamps.
-- Verified strict train < validation < test temporal boundaries.
-- Verified no `record_id` intersection among splits.
-- Verified exactly two generated examples per source hour.
-- Recorded SHA-256 for the source and every processed split.
-
-### Planned model metrics
-
-- Exact match: $EM = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}[\hat{y}_i=y_i]$ after lowercase/whitespace normalization.
-- Token F1: harmonic mean $F_1=2PR/(P+R)$ computed from overlapping normalized tokens.
-- Validation/test loss: teacher-forced cross-entropy reported by the Trainer.
-- Optional ROUGE-L for explanatory text after the core evaluator runs.
-
-The deterministic-label baseline can reproduce labels directly from quartiles, but it is **not a language model baseline**. Its expected exact match on generated targets is 1.0 by construction and must not be compared as learned generalization. FLAN-T5 base-model evaluation and fine-tuned-model evaluation have not run. Actual losses, test scores, predictions, and graphs are therefore unavailable. See [EVALUATION_REPORT.md](EVALUATION_REPORT.md).
-
-## Prompt engineering
-
-Three positive and three negative/adversarial tests are fully specified in [PROMPT_TEST_RESULTS.md](PROMPT_TEST_RESULTS.md). Actual SLM responses and pass/fail values are marked **Not Run** because there is no trained checkpoint. Positive tests cover complete readings, missing values, and constrained explanation. Negative tests probe prompt injection, unsupported health claims, and fabricated pollution reports.
-
-## System architecture
+## System overview
 
 ```mermaid
 flowchart TD
-    A["UCI CSV / XLSX"] --> B["Parse 15 fields"]
-    B --> C["-200 to missing; timestamps; duplicates"]
-    C --> D["Chronological 70/15/15 split"]
-    D --> E["Train-only quartiles"]
-    E --> F["Text instruction pairs"]
-    F --> G["FLAN-T5-small fine-tuning"]
-    G --> H["Validation and held-out test"]
-    H --> I["Model card and HF model repo"]
-    G --> J["Streamlit inference app"]
-    F --> K["HF dataset repo"]
+    A["UCI Air Quality source CSV"] --> B["Validate schema, timestamps and numbers"]
+    B --> C["Convert -200, blanks and non-finite to missing"]
+    C --> D["Sort and deduplicate source hours"]
+    D --> E["Chronological 70/15/15 split"]
+    E --> F["Fit CO, NO2 and benzene quartiles on TRAIN only"]
+    F --> G["Generate classify + explain supervision"]
+    G --> H["Hugging Face processed dataset"]
+    H --> I["Train 30.3M-parameter MiniQwen from random weights"]
+    I --> J["Published custom model.pt + tokenizer + metrics"]
+    K["Historical user instruction"] --> L{"Validate task, date, readings and units"}
+    L -->|"Invalid / unsupported"| M["REJECTED, no model call"]
+    L -->|"Valid"| N["Custom SLM inference"]
+    J --> N
+    N --> O{"Check output format and missingness"}
+    O -->|"Invalid"| P["ABSTAINED"]
+    O -->|"Valid"| Q["ACCEPTED: relative historical description"]
 ```
 
-Solid implementation currently reaches the instruction-pair stage. Downstream model-dependent stages are present as code but not experimentally completed.
+---
 
-## Application
+# Phase 1: Data Validation and Preprocessing
 
-[`app.py`](app.py) provides task selection, CO/NO₂/benzene inputs, model-path selection, generated output, and transparent failure messaging. It loads only an actual Transformers checkpoint; it does not silently replace a missing model with rules. Launch verification and screenshots are **Not Run** because Streamlit and Transformers are not installed.
+This phase is **deterministic data engineering**, not neural language-model inference. Its role is to convert an imperfect sensor record into a traceable training dataset while preventing obvious temporal leakage.
 
-## Project structure
+## 1.1 Source data and schema
+
+Source: [UCI Machine Learning Repository, Air Quality, dataset 360](https://archive.ics.uci.edu/dataset/360/air+quality), DOI [10.24432/C59K5F](https://doi.org/10.24432/C59K5F). The historical collection spans **10 March 2004, 18:00** through **4 April 2005, 14:00**, from a single monitoring context in an Italian city.
+
+The supplied file has **15 required fields**: two time fields and 13 measurement/sensor/environmental fields.
+
+| Source column | Data description | Used for SLM labels? |
+|---|---|---|
+| `Date`, `Time` | Hourly timestamp; parsed from `DD/MM/YYYY` and `HH.MM.SS` | Time context and split order |
+| `CO(GT)` | Reference carbon monoxide, mg/m³ | **Yes, CO** |
+| `NO2(GT)` | Reference nitrogen dioxide, µg/m³ | **Yes, NO2** |
+| `C6H6(GT)` | Reference benzene, µg/m³ | **Yes, benzene** |
+| `NOx(GT)`, `NMHC(GT)` | Other reference pollutant measures | No |
+| `PT08.S1(CO)` through `PT08.S5(O3)` | Five gas-sensor channels | No |
+| `T`, `RH`, `AH` | Temperature, relative humidity, absolute humidity | No |
+
+The additional fields are kept in the source audit but not included as targets in this three-pollutant instruction task.
+
+## 1.2 Source-data validation
+
+Implemented in [`src/preprocess.py`](src/preprocess.py). The parser:
+
+1. Reads the semicolon-delimited file with UTF-8-BOM handling and decimal-comma normalization.
+2. Verifies that all **15 required column names** are present.
+3. Parses valid combined dates/times; skips empty tail rows and records invalid timestamps.
+4. Converts `-200` (the UCI missing-data sentinel), blank values and non-finite/non-numeric measurements to missing values rather than treating them as zero.
+5. Deduplicates by timestamp, retaining the first observation; sorts all valid observations chronologically.
+6. Counts missing values and records SHA-256 hashes for reproducibility.
+
+**Recorded source audit:**
+
+| Check | Result |
+|---|---:|
+| Parsed, distinct timestamped measurements | **9,357** |
+| File rows, including header and blank tail | **9,472** |
+| Trailing blank CSV rows | **114** |
+| Invalid timestamp rows | **0** |
+| Duplicate timestamps removed | **0** |
+| UCI metadata/listing context | **9,358** instances/rows reported; supplied CSV audit gives **9,357 observations** |
+
+The 9,357 vs 9,358 distinction is retained rather than quietly changing the source record count. The source CSV SHA-256 recorded in `dataset_info.json` is:
 
 ```text
-.
-├── app.py                         # Streamlit model-inference UI
-├── src/
-│   ├── preprocess.py              # source validation, splitting, text supervision
-│   ├── train.py                   # FLAN-T5-small fine-tuning
-│   └── evaluate.py                # held-out generation, EM and token F1
-├── data/
-│   ├── raw/                       # supplied UCI CSV/XLSX
-│   └── processed/                 # train/validation/test + dataset_info.json
-├── artifacts/                     # runtime results; checkpoint weights ignored by Git
-├── tests/                         # pipeline invariants
-├── README.md                      # primary technical report
-├── PROJECT_REPORT.md              # research-style narrative
-├── TRAINING_REPORT.md             # training status/configuration
-├── EVALUATION_REPORT.md           # model/data evaluation evidence
-├── DATASET_CARD.md                # provenance, schema, biases
-├── MODEL_CARD.md                  # intended model and status
-├── DESIGN_THINKING.md             # five-stage process
-├── PROMPT_TEST_RESULTS.md          # six controlled tests
-├── REPRODUCIBILITY.md             # exact commands
-└── SUBMISSION.md                  # verified/unverified publication links
+13277ae5d8581e80b7be09d47c7d3d06fe9b8e957078f2cf6e859f955e62f996
 ```
 
-## Installation and reproduction
+### Missing-value audit
+
+| Source field | Missing after `-200` conversion | Interpretation |
+|---|---:|---|
+| `NMHC(GT)` | 8,443 | Extensive missingness |
+| `CO(GT)` | 1,683 | Retained as unavailable when missing |
+| `NO2(GT)` | 1,642 | Retained as unavailable when missing |
+| `NOx(GT)` | 1,639 | Other reference gas |
+| `C6H6(GT)` (benzene) | 366 | Retained as unavailable when missing |
+| `PT08.S1`, `PT08.S2`, `PT08.S3`, `PT08.S4`, `PT08.S5`, `T`, `RH`, `AH` | 366 each | Sensor/environmental missingness |
+
+**No fabricated imputation:** The chosen training targets use an explicit **unavailable** category when CO, NO2 or benzene is missing. This avoids presenting filled-in readings as direct observations.
+
+## 1.3 Chronological train/validation/test split
+
+The crucial rule is **split the unique source hours first, then create examples**. Each original hour produces two prompts; both prompts must belong to the same split.
+
+| Split | Source hours | Instruction/answer examples | Historical period |
+|---|---:|---:|---|
+| Training | **6,549** | **13,098** | 2004-03-10 18:00 to 2004-12-08 14:00 |
+| Validation | **1,404** | **2,808** | 2004-12-08 15:00 to 2005-02-05 02:00 |
+| Held-out test | **1,404** | **2,808** | 2005-02-05 03:00 to 2005-04-04 14:00 |
+| **Total** | **9,357** | **18,714** | Entire validated period |
+
+This is an ordered approximately **70/15/15** split, not a random split. The timestamps in training end before validation begins, and validation ends before testing begins. `record_id` sets are disjoint across all three splits.
+
+**What this does and does not prove:** it prevents *source-hour overlap* and *future-hour quartile fitting* across splits. It does not eliminate every possible form of temporal correlation, covariate shift, sensor calibration drift or generalization error.
+
+## 1.4 Relative labels from training-only quartiles
+
+For each pollutant, the pipeline calculates the **25th (Q1)** and **75th (Q3)** percentiles using **only non-missing training-period readings**, then freezes them for validation, testing and the generated instruction targets.
+
+| Pollutant | Q1 (25th percentile) | Q3 (75th percentile) | Non-missing training readings |
+|---|---:|---:|---:|
+| CO | **1.1 mg/m³** | **2.8 mg/m³** | 5,066 |
+| NO2 | **69 µg/m³** | **123 µg/m³** | 5,096 |
+| Benzene | **5.1 µg/m³** | **14.6 µg/m³** | 6,401 |
+
+Labeling logic used in `src/preprocess.py`:
+
+- **unavailable:** missing sensor value;
+- **low:** measured value strictly below Q1;
+- **elevated:** measured value strictly above Q3;
+- **typical:** value between Q1 and Q3, **including both boundaries**.
+
+These categories describe this historical dataset, **not** a calibrated official AQI, air-quality standard or exposure-safety threshold.
+
+## 1.5 Instruction dataset generation
+
+For every validated hour, the pipeline produces **two supervised examples**:
+
+**Classification instruction**
+
+```text
+Classify these historical air-quality measurements as low, typical, elevated or unavailable relative to training-distribution quartiles. Hour: 2005-03-08T08:00:00. CO: 3.40 mg/m3; NO2: 182.00 ug/m3; benzene: 18.30 ug/m3.
+```
+
+Target:
+
+```text
+CO: elevated; NO2: elevated; benzene: elevated.
+```
+
+**One-sentence explanation instruction**
+
+```text
+Explain these historical air-quality measurements in one factual sentence. Use relative historical quartiles only; do not infer official AQI, health safety or a pollution source. Hour: 2005-03-06T09:00:00. CO: 0.70 mg/m3; NO2: 79.00 ug/m3; benzene: 1.50 ug/m3.
+```
+
+Target:
+
+```text
+Relative to historical training data, CO is low, NO2 is typical, and benzene is low.
+```
+
+Each processed CSV stores: `text`, `label`, `task`, `record_id`, `timestamp`, `input_text` and `target_text`. The duplicated text/label columns make the data consumable by common text-to-text loading tools while retaining provenance.
+
+**Important distinction:** quartile rules generate the *supervision labels*. They are not themselves the trained SLM, and a rule-based answer should not be misreported as a neural-model prediction.
+
+## 1.6 Dataset integrity and reproducibility
+
+Evidence is available in [`tests/test_pipeline.py`](tests/test_pipeline.py) and the [machine-readable metadata](data/processed/dataset_info.json).
+
+Verified/recorded invariants cover:
+
+- Exactly **6,549 / 1,404 / 1,404** source hours;
+- Exactly **two examples per source hour**;
+- No overlapping `record_id` values across splits;
+- Strict historical train < validation < test boundaries;
+- Source and generated-split SHA-256 values.
+
+| Processed split | SHA-256 |
+|---|---|
+| `train.csv` | `d28759a9816ad2d50226fbd2df0eea69e2cbdf64ed04d7127f9e3d9316a587a4` |
+| `validation.csv` | `d684890c81a02fd6f4aa31c2576ce804a34e74764fedc8325bfe06f50b2313d0` |
+| `test.csv` | `470f28ced793f4504bfd3050a9873a5dc28875408de1d7a853f84336649617f9` |
+
+To reproduce this **data-only phase** (assuming the official CSV is placed in `data/raw/`):
+
+```powershell
+python src/preprocess.py --csv data/raw/AirQualityUCI.csv --out data/processed
+python -m unittest discover -s tests -p test_pipeline.py -v
+```
+
+See [DATASET_CARD.md](DATASET_CARD.md) for provenance and restrictions. The published data files are at [Hugging Face](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed).
+
+---
+
+# Phase 2: From-Scratch Small Language Model and Safe Inference
+
+This phase is **learned text generation plus application-level verification**, building on Phase 1's supervised instruction/answer pairs.
+
+## 2.1 Actual model, not a fine-tuned Qwen checkpoint
+
+The completed experiment uses a **custom decoder-only MiniQwen-style Transformer**, coded in [`airquality_slm_model.py`](airquality_slm_model.py) and **trained from randomly initialized model weights**. Its layers borrow general Qwen-family architectural ideas, but **no pretrained Qwen weights were loaded**. The published **`Qwen/Qwen3-8B` tokenizer** supplies tokenization and a vocabulary, not pretrained neural reasoning or knowledge.
+
+| Model property | Published configuration |
+|---|---:|
+| Trainable/unique model parameters | **30,301,632** |
+| Vocabulary size | **151,669** |
+| Transformer decoder layers | **3** |
+| Hidden dimension (`d_model`) | **192** |
+| Attention query heads | **6** |
+| Attention key/value heads | **2** |
+| Feed-forward dimension (`d_ff`) | **512** |
+| Maximum context length (`max_seq_len`) | **160 tokens** |
+| Architectural components | RoPE, grouped-query attention, Q/K RMSNorm, residual blocks, SwiGLU, causal attention |
+| Output projection | Weight-tied to input-token embedding |
+| Checkpoint | Custom PyTorch state dict `model.pt` |
+
+The architecture is defined directly in PyTorch, not generated by calling an off-the-shelf `AutoModelForCausalLM.from_pretrained` model. The model generates output autoregressively with greedy next-token selection.
+
+### Model structure
+
+```mermaid
+flowchart LR
+    A["Training instruction + historical readings"] --> B["Qwen3 tokenizer"]
+    B --> C["Trainable token embedding"]
+    C --> D["3 decoder blocks"]
+    D --> E["Final RMSNorm"]
+    E --> F["Tied vocabulary projection"]
+    F --> G["Autoregressive classification / explanation"]
+    D1["RoPE + grouped-query causal attention"] -.-> D
+    D2["Q/K RMSNorm + SwiGLU feed-forward"] -.-> D
+```
+
+## 2.2 Training setup and checkpoints
+
+| Experiment field | Recorded outcome |
+|---|---|
+| Training origin | From scratch, random weights |
+| Optimizer updates | **4,000** |
+| Loaded training examples | **13,098** |
+| Loaded validation examples | **2,808** |
+| Loaded held-out test examples | **2,808** |
+| Per-step batch size | **2** |
+| Gradient-accumulation steps | **2** |
+| Maximum sequence length | **160** |
+| Training machine | NVIDIA RTX 4060 Laptop GPU (8 GB VRAM), local Windows/Python environment |
+| Checkpoint artifacts | `model.pt`, `model_config.json`, custom Python model implementation, tokenizer files |
+| Publication | [AirQuality-SLM-Scratch-Qwen on Hugging Face](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) |
+
+The completed training run was performed in the project's notebook workflow. The repo's older `src/train.py` is a **separate, unexecuted FLAN-T5 experimental path** and **must not be used as proof or a reproduction script for this trained MiniQwen checkpoint**.
+
+## 2.3 Evaluation results: measured vs interpreted
+
+Values below come from [`metrics.json`](metrics.json), which mirrors the published checkpoint's metrics.
+
+| Metric | Recorded value |
+|---|---:|
+| Best sampled validation loss | **0.002819679** |
+| Full validation loss | **0.009190715** |
+| Held-out test loss | **0.008156747** |
+| Optimizer steps | **4,000** |
+| Pretrained model weights used | **False** |
+
+These are **cross-entropy losses**, **not** 99% accuracy, 99.9% precision, official AQI agreement or an externally validated pollution-classification score. The low losses should be understood in the context of highly templated, automatically generated supervision. Wider accuracy evaluation, calibration and out-of-distribution tests remain open.
+
+Training graphs: [`training_curves.png` on Hugging Face](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/blob/main/training_curves.png).
+
+## 2.4 Independent checkpoint verification
+
+The public checkpoint was independently downloaded, loaded on CPU through the repository's custom class, and checked with a strict PyTorch state-dictionary load (`weights_only=True`, `strict=True`). This verifies that the published weights and model code are structurally compatible. It does **not** prove the model is accurate on every possible input.
+
+The portable CLI loads the checkpoint, configuration, tokenizer, and model source lazily through Hugging Face Hub. First use requires an internet connection or a previously downloaded local model folder. There is **no need to retrain**.
+
+## 2.5 Robustness tests: raw model vs safe inference
+
+Three positive and three negative/edge prompts were selected. In the **original model-only experiment**, valid prompts passed but two unsupported/malformed prompts failed. A separate deterministic validation wrapper was then applied **without changing any weights**.
+
+| Case | Question tested | Original SLM alone | SLM with safe-inference layer |
+|---|---|---|---|
+| P1 | Complete high relative readings | PASS | **PASS** |
+| P2 | A missing benzene reading | PASS | **PASS** |
+| P3 | Constrained historical explanation | PASS | **PASS** |
+| N1 | All three readings missing | PASS | **PASS** |
+| N2 | Malformed numbers/units | FAIL: generated labels | **PASS: rejected before model call** |
+| N3 | Future official AQI and exercise safety request | FAIL: repeated text | **PASS: rejected before model call** |
+| **Selected-prompt total** | | **4/6** | **6/6** |
+
+Additionally, the safe-inference Python module passed **9/9 offline validator unit tests**. On **15 November 2026**, the standalone CLI passed the six selected live-model checks **in a fresh Python process with exit code 0**.
+
+**Do not interpret 6/6 as a population accuracy or safety benchmark.** It is evidence for these six chosen cases only. The two problematic prompts were safely rejected by application logic rather than magically corrected through neural retraining.
+
+## 2.6 The input and output safety layer
+
+Implemented in [`safe_inference.py`](safe_inference.py).
+
+**Before calling the SLM:**
+
+1. Accept only two supported templates: historical `Classify` and `Explain`.
+2. Require an ISO timestamp within the dataset's historical range.
+3. Require all three pollutant fields, expected units (CO: `mg/m3`; NO2/benzene: `ug/m3`), and finite nonnegative numeric readings.
+4. Map `missing` and `-200` markers to **missing**, never to a real concentration.
+5. **REJECT** malformed or out-of-scope requests before spending inference compute.
+
+**After generation:**
+
+1. Match the exact three-pollutant output structure or constrained one-sentence explanation.
+2. Confirm that present readings are not labeled `unavailable` and missing readings are not assigned a numerical category.
+3. Return **ACCEPTED** when the schema checks pass; **ABSTAINED** if model output is malformed/inconsistent; or **ERROR** if inference itself fails.
+
+The validator checks syntax, task scope and missingness consistency. **It does not independently verify that every numeric category selected by the model is correct**, guarantee physical sensor plausibility or provide calibrated confidence.
+
+### Run current verified CLI
+
+Using a fresh Python environment and the published checkpoint:
 
 ```powershell
 git clone https://github.com/DSGAMING98/AirQuality-SLM-DT.git
 cd AirQuality-SLM-DT
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-
-python src\preprocess.py --csv data\raw\AirQualityUCI.csv --out data\processed
-python -m unittest discover -s tests -v
-python src\train.py --data-dir data\processed --output-dir artifacts\flan-t5-airquality
-python src\evaluate.py --model artifacts\flan-t5-airquality\best_model
-streamlit run app.py
+python -m pip install torch "transformers>=4.51,<5" "huggingface_hub>=0.30"
+python safe_inference.py --self-test --device cpu
+python -m unittest discover -s tests -p test_safe_inference.py -v
 ```
 
-For exact commands, expected files, checks, and Hugging Face loading instructions, read [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+One supported example:
 
-## Hugging Face and GitHub
+```powershell
+python safe_inference.py --device cpu --prompt "Classify these historical air-quality measurements as low, typical, elevated or unavailable relative to training-distribution quartiles. Hour: 2005-03-08T08:00:00. CO: 3.40 mg/m3; NO2: 182.00 ug/m3; benzene: 18.30 ug/m3."
+```
 
-The dataset layout follows the reference [Rotten Tomatoes dataset repository](https://huggingface.co/datasets/cornell-movie-review-data/rotten_tomatoes): YAML metadata, explicit split files, a dataset card, and load instructions. The public [Hugging Face dataset](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) contains `train.csv`, `validation.csv`, `test.csv`, `dataset_info.json`, and its dataset card. The complete project is published in the public [GitHub repository](https://github.com/DSGAMING98/AirQuality-SLM-DT). Model publication remains **Not Published** because no trained checkpoint exists.
+Expected for that **selected** input: `CO: elevated; NO2: elevated; benzene: elevated.`
+
+Use `--model-dir PATH` for a trusted local model folder instead of downloading, or `--revision COMMIT_SHA` to pin a specific Hugging Face revision. A public repository does not need a Hugging Face login just to download files.
+
+**Security note:** the loader imports the model repository's Python implementation, so only run code from sources/revisions you trust.
+
+## 2.7 Streamlit application status
+
+The GitHub `app.py` presently on `main` is **legacy**: it uses `AutoModelForSeq2SeqLM` with a FLAN-T5 model directory and does **not** load the trained custom MiniQwen state dict. It should not be presented as a verified v1.1 user interface or deployed unchanged.
+
+The tested interface for the published checkpoint is **`safe_inference.py` (command line)**. A replacement Streamlit interface was prepared separately, but has not yet been committed to this repo or verified in the browser. A live Streamlit deployment URL has not been established.
+
+---
+
+# Design Thinking and Engineering Decisions
+
+| Stage | Project-specific action and evidence |
+|---|---|
+| **Empathize** | Need an understandable explanation of historical CO/NO2/benzene readings and transparent handling of absent sensor measurements |
+| **Define** | Translate numerical measurements into short factual, auditable descriptions without pretending they are official AQI or health assessments |
+| **Ideate** | Consider rule-only classification vs learned short text generation; use quartile targets for supervision, then implement a compact custom Transformer |
+| **Prototype** | Build timestamp-cleaning/splitting code, publish instruction examples, train MiniQwen from scratch, implement CLI inference |
+| **Test and iterate** | Audit source/splits, compute held-out losses, record six prompt outcomes, add pre-inference rejection and post-inference checks after observed failures |
+
+This framing distinguishes **the deterministic data and label creation**, **the learned SLM**, and **the validation guardrails** as separate pieces of the product.
+
+# Repository Layout
+
+```text
+AirQuality-SLM-DT/
+├── README.md                      # This current two-phase overview
+├── src/
+│   ├── preprocess.py              # Phase 1: validate/clean/split/label
+│   ├── train.py                   # Historical FLAN-T5 prototype, NOT MiniQwen training
+│   └── evaluate.py                # Historical FLAN-T5 evaluator
+├── data/
+│   ├── raw/                       # Original UCI source
+│   └── processed/                 # Train/validation/test CSV + metadata
+├── train.csv                      # Published-split convenience copy
+├── validation.csv
+├── test.csv
+├── dataset_info.json              # Phase 1 metadata convenience copy
+├── DATASET_CARD.md                # Phase 1 provenance and limitations
+├── tests/
+│   ├── test_pipeline.py           # Phase 1 split invariants
+│   └── test_safe_inference.py     # Phase 2 validator tests
+├── airquality_slm_model.py        # Custom MiniQwen-style PyTorch architecture
+├── model_config.json              # Trained model configuration
+├── metrics.json                   # Published loss measurements
+├── inference_example.py           # Direct custom-checkpoint inference example
+├── safe_inference.py              # Recommended validated v1.1 CLI
+├── RELEASE_NOTES_v1.1.md          # v1.1 release evidence
+├── PUBLISHING.md                  # Initial publication notes (some steps historical)
+├── requirements.txt               # Mixed original project dependencies
+└── app.py                         # LEGACY FLAN-T5 Streamlit app, not v1.1-ready
+```
+
+The large trained `model.pt` and tokenizer artifacts are hosted in the **Hugging Face model repository**, not in the GitHub source tree.
+
+## Current vs historical repository documentation
+
+Some pre-v1.1 files such as `TRAINING_REPORT.md`, `EVALUATION_REPORT.md`, `MODEL_CARD.md`, `PROMPT_TEST_RESULTS.md`, `PROJECT_REPORT.md` and `REPRODUCIBILITY.md` were written for the **earlier unexecuted FLAN-T5 proposal**. Their descriptions of model training being blocked, no weights being published, or FLAN-T5 being the final architecture **are historical and do not describe the published MiniQwen run**. They have been left intact as development records; this README, `metrics.json`, `safe_inference.py`, and `RELEASE_NOTES_v1.1.md` describe the current experiment.
 
 ## Limitations and future work
 
-- Measurements are historical (2004–2005), single-site, and not real time.
-- Extensive missingness, especially NMHC, limits tasks and supervision.
-- Generated labels encode dataset quartiles, not human judgment, legal limits, official AQI, or health risk.
-- Geography, traffic, weather context, calibration drift, and causal source labels are unavailable.
-- A seq2seq model may hallucinate units/categories or follow malicious instructions.
-- No trained checkpoint or model metrics exist yet; application capability is not established.
+- **Historical, single-context dataset (2004–2005):** cannot stand in for current air quality in Bengaluru or any other location.
+- **Training-relative quartiles:** not regulatory limits, clinical thresholds or official AQI categories.
+- **Automatically generated labels:** good for controlled educational language supervision, but not human-annotated pollution expertise.
+- **Small, from-scratch model:** susceptible to poor generalization and incorrect outputs on unseen numeric combinations, even when the format looks right.
+- **Guardrails are partial:** they enforce supported input shape, dates, units, missingness and output syntax, not ground-truth numerical correctness.
+- **Limited evaluation:** six chosen functional/robustness cases and loss values do not substitute for full held-out classification accuracy, multiple seeds, calibration or adversarial security testing.
+- **Deployment gap:** Streamlit app in `main` is legacy; browser and production performance have not been verified for the replacement interface.
+- **Training provenance gap:** the actual from-scratch training notebook is separate from the old GitHub FLAN-T5 training script; a clean end-to-end training reproduction and archived environment should be added.
 
-Future work includes dependency-enabled fine-tuning, base-vs-fine-tuned comparison, repeated seeds, calibrated confidence, human review, newer multi-location datasets, live sensor integration, multilingual explanations, ONNX/8-bit quantization, edge deployment, and robustness/fairness/security testing.
-
-## Requirement evidence matrix
-
-| Assignment requirement | Evidence | Status |
-|---|---|---|
-| UCI data and 15 variables | README Dataset; `DATASET_CARD.md`; raw files | Completed |
-| `-200`, timestamps, duplicates | `src/preprocess.py`; `dataset_info.json` | Completed |
-| Train/validation/test | three CSVs + hashes/boundaries | Completed |
-| Leakage prevention | chronological split + tests | Completed |
-| FLAN-T5-small architecture | README; `MODEL_CARD.md`; `src/train.py` | Code complete; training blocked |
-| Training/validation/test metrics | `TRAINING_REPORT.md`; `EVALUATION_REPORT.md` | Not Run |
-| Six prompts | `PROMPT_TEST_RESULTS.md` | Defined; responses Not Run |
-| Streamlit | `app.py` | Implemented; launch Not Run |
-| HF dataset/model | `SUBMISSION.md` | Dataset published; model Not Run |
-| Reproduction | `requirements.txt`; `REPRODUCIBILITY.md` | Completed for code/data stage |
-| GitHub documentation | README and nine reports | Published |
+**Future work:** publish the trained-model-specific reproducible notebook/scripts; evaluate exact-match and label accuracy over the full held-out set; run larger robustness suites and multiple seeds; test on new sensor periods; integrate safe inference into a new Streamlit UI; add quantization/latency measurements; and perform independent human review before any higher-stakes use.
 
 ## References
 
-1. De Vito, S. et al. UCI Air Quality dataset. DOI: [10.24432/C59K5F](https://doi.org/10.24432/C59K5F).
-2. De Vito, S. et al. (2008). *On field calibration of an electronic nose for benzene estimation in an urban pollution monitoring scenario*. Sensors and Actuators B, 129(2), 750–757.
-3. Raffel, C. et al. (2020). [Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer](https://jmlr.org/papers/v21/20-074.html).
-4. Chung, H. W. et al. (2022). [Scaling Instruction-Finetuned Language Models](https://arxiv.org/abs/2210.11416).
-5. Hugging Face. [FLAN-T5-small model card](https://huggingface.co/google/flan-t5-small).
-6. Hugging Face. [Transformers seq2seq training documentation](https://huggingface.co/docs/transformers/tasks/summarization).
-7. Hugging Face. [Datasets repository structure](https://huggingface.co/docs/datasets/repository_structure).
-8. Streamlit. [Documentation](https://docs.streamlit.io/).
+1. UCI Machine Learning Repository, [Air Quality dataset (ID 360)](https://archive.ics.uci.edu/dataset/360/air+quality), DOI: [10.24432/C59K5F](https://doi.org/10.24432/C59K5F).
+2. De Vito et al., *On field calibration of an electronic nose for benzene estimation in an urban pollution monitoring scenario*, Sensors and Actuators B, 2008.
+3. [PyTorch](https://pytorch.org/) documentation, custom model definition, state dictionaries and causal attention.
+4. [Hugging Face Hub](https://huggingface.co/docs/hub/index) documentation, model repositories and tokenizer assets.
+5. [Qwen/Qwen3-8B tokenizer repository](https://huggingface.co/Qwen/Qwen3-8B) (tokenizer used; **pretrained model weights not used**).
 
-## Conclusion
+---
 
-The project has a verified, reproducible data foundation: exact source hashing, documented missingness, chronological leakage-safe splitting, train-only threshold estimation, and 18,714 generated instruction examples across three disjoint splits. The FLAN-T5-small training and model-dependent claims remain explicitly incomplete because required packages/checkpoint downloads were unavailable. The repository therefore demonstrates genuine completed engineering without pretending that a model was fine-tuned when it was not.
+**Summary:** **Phase 1** validates and transforms 9,357 historical observations into 18,714 time-separated, quartile-labeled instruction examples. **Phase 2** trains a 30.3M-parameter, Qwen-inspired decoder-only SLM from scratch and adds a tested safe-inference wrapper. The main evidence is the published dataset, the real model checkpoint, recorded validation/test losses, and the independently executed 6/6 selected-case safety test. These are distinct deliverables and neither one should be confused with a fabricated official AQI predictor.

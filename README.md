@@ -1,3 +1,47 @@
+# AirQuality SLM v1.1 | Trained from scratch and verified
+
+**Current release: 15 November 2026.** The working model is a **30,301,632-parameter Qwen-inspired, decoder-only Small Language Model trained from random initialization**, **not** a fine-tuned Qwen model and **not** the earlier FLAN-T5 proposal.
+
+| Resource | Link |
+|---|---|
+| Trained public checkpoint, tokenizer, configuration, training graph | [Hugging Face model](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) |
+| Chronologically split training/validation/test instruction dataset | [Hugging Face dataset](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) |
+| Standalone validated inference | [safe_inference.py](safe_inference.py) |
+| Full v1.1 methods, findings, limitations | [RELEASE_NOTES_v1.1.md](RELEASE_NOTES_v1.1.md) |
+| Reproduction and publication workflow | [PUBLISHING.md](PUBLISHING.md) |
+
+## Verified training and test evidence
+
+- **Architecture:** three Transformer layers, RoPE, grouped-query attention, RMSNorm and SwiGLU, using the Qwen3 tokenizer (no pretrained Qwen weights).
+- **Full experiment:** 4,000 optimizer updates; 13,098 training, 2,808 validation, 2,808 held-out test instruction examples loaded.
+- **Loss:** full validation cross-entropy **0.0091907**, held-out test cross-entropy **0.0081567**. These numbers are *not* test-set classification accuracy.
+- **Reproducibility:** remote model.pt downloaded independently, strictly loaded with the custom model code, and tested with CPU inference.
+- **Six selected model-only prompts:** **4/6 passed** (3 positive correct; unsupported/invalid input failure cases documented).
+- **Six selected safe-inference prompts:** **6/6 passed**, including the **standalone fresh-process test on CPU with exit code 0** on 2026-11-15.
+- **Offline validator unit tests:** **9/9 passed**. These are narrow tests; neither the six prompts nor the loss estimates prove general real-world reliability.
+
+## Run the current release
+
+Requires Python with PyTorch, Transformers 4.x, and huggingface_hub:
+
+~~~bash
+python -m pip install torch "transformers>=4.51,<5" "huggingface_hub>=0.30"
+python safe_inference.py --self-test --device cpu
+python -m unittest discover -s tests -p test_safe_inference.py -v
+~~~
+
+The CLI downloads the public model on first use. It rejects malformed sensor readings, out-of-period timestamps and unsupported future official-AQI/health requests **before** calling the model, and abstains on incorrectly formatted model responses. The SLM weights are unchanged. See [release notes](RELEASE_NOTES_v1.1.md) for single-prompt commands and limitations.
+
+**Boundaries:** Labels low/typical/elevated are relative to quartiles from the training distribution. They are *not* official AQI categories, live forecasts or medical/health-safety guidance.
+
+---
+
+## Historical initial project plan (superseded)
+
+**Documentation below is preserved from the original dataset-pipeline/FLAN-T5 proposal.** Its statements that training was blocked or the model was unpublished describe the **earlier plan**, not the current MiniQwen training status. The old src/train.py, src/evaluate.py and app.py target FLAN-T5 and have not been verified against the new trained checkpoint. Prefer the v1.1 files linked above for current execution.
+
+---
+
 # AirQuality-SLM
 
 ### Design Thinking for Explainable Historical Air-Quality Interpretation

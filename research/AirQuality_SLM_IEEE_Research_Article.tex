@@ -1,0 +1,187 @@
+\documentclass[conference,a4paper,10pt]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{url}
+\usepackage{cite}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{balance}
+\begin{document}
+\title{Auditable Historical Air-Quality Interpretation Using a 30.3M-Parameter Transformer Trained From Scratch}
+\author{\IEEEauthorblockN{Prajwal C. Pradhan}
+\IEEEauthorblockA{Department of Computer Science and Engineering (AI \& ML)\\
+Jain (Deemed-to-be University), Bengaluru, India\\
+Student ID: 25BTRCL190}}
+\maketitle
+\begin{abstract}
+Historical environmental sensor datasets combine missing-value markers, time dependence, and heterogeneous units that can undermine naive language-model pipelines. This paper documents a two-phase educational implementation: (i) auditable preprocessing of the UCI Air Quality dataset into chronological, relative-category instruction pairs and (ii) training and validating a compact decoder-only transformer without pretrained language-model weights. The source audit retained 9,357 timestamped observations, excluded 114 trailing blank rows, and generated 18,714 examples across disjoint 70/15/15 time-ordered splits. A 30,301,632-parameter Qwen-inspired architecture using a public tokenizer was optimized for 4,000 steps. Recorded full validation and held-out test cross-entropies were 0.009191 and 0.008157, respectively; these losses must not be interpreted as classification accuracy. In six selected functional and robustness cases, the raw model passed four. A deterministic validation layer, without changing model weights, raised the selected-case pass count to six by rejecting malformed inputs and out-of-scope requests before inference. The study differentiates reproducible data engineering, measured model behavior, and application guardrails, and identifies the limits of the current evaluation and deployment. The published custom PyTorch checkpoint is not yet a verified Ollama-importable GGUF model.
+\end{abstract}
+\begin{IEEEkeywords}
+small language model, air quality, time-series leakage, data validation, grouped-query attention, transformer, safe inference, design thinking
+\end{IEEEkeywords}
+
+\section{Introduction}
+Air-quality measurements are challenging input for educational language systems: observations may be missing, units differ among pollutants, readings are temporally correlated, and an apparently plausible sentence can imply unsupported regulatory or health judgments. The UCI Air Quality collection provides hourly sensor and reference-gas records with missing values represented by \texttt{-200} and documented sensor drift \cite{uci,devito}. This study does not attempt to estimate contemporary air quality or an official Air Quality Index (AQI). Instead, it investigates whether a genuinely trained small language model (SLM) can generate constrained explanations of historical carbon monoxide (CO), nitrogen dioxide (NO$_2$), and benzene readings relative to the \emph{training distribution}.
+
+The project proceeded in two separable phases. The first established schema checks, sentinel handling, timestamp-based splitting, and deterministic instruction supervision. The second trained a compact decoder-only transformer from random weights and added inference-time input/output validation. Unlike a predecessor plan to fine-tune FLAN-T5, the completed experiment uses custom MiniQwen-style code and a Qwen3 tokenizer \emph{without} pretrained Qwen weights. The contributions are: (1) an inspectable time-ordered instruction corpus; (2) a published 30.3M-parameter checkpoint with recorded losses; and (3) a tested rejection/abstention layer, with measured claims separated from deployment assumptions.
+
+\section{Design Thinking and Related Work}
+\subsection{Human-centered problem definition}
+The \emph{empathize} stage identified a need for understandable descriptions of historical sensor readings without concealing missing data. The \emph{define} stage set the constrained question: how can numerical measurements become auditable, cautious natural-language interpretations? In \emph{ideation}, deterministic rules alone were considered but would not constitute a trained SLM. The \emph{prototype} stage produced two instruction types from cleaned historical hours and a compact transformer. The \emph{test} stage exposed unsupported responses on malformed or forecasting prompts; this motivated explicit input rejection and output validation.
+
+\subsection{Technical foundations}
+Transformer attention \cite{vaswani}, rotary position embeddings \cite{roformer}, grouped-query attention \cite{gqa}, and RMS normalization \cite{rmsnorm} motivate architectural components of the implementation. Qwen3 provides a publicly accessible tokenizer and general architectural reference \cite{qwen}; this does not confer pretrained model capabilities on the custom random-initialization weights. Earlier air-quality sensor research emphasizes calibration difficulty and on-field variability \cite{devito}. The present study evaluates templated historical explanations rather than physical sensor calibration or pollutant forecasting.
+
+\section{Phase I: Data Validation and Preprocessing}
+\subsection{Source audit and missingness}
+The semicolon-separated source file contains date/time fields and 13 additional gas, sensor, and meteorological columns. The parser validates the required 15 field names, handles decimal commas, parses date and time, drops blank tail rows, sorts source hours, and deduplicates by timestamp. The published audit reports 9,357 distinct dated observations, 114 trailing blank rows, zero invalid timestamp rows, and zero removed duplicates. The UCI listing reports 9,358 instances; the audit reports its observed count explicitly rather than silently reconciling the difference \cite{uci}.
+
+A missing or non-finite measurement and the \texttt{-200} source sentinel are represented as missing, never as a negative pollutant concentration. Table~\ref{tab:missing} summarizes source-level missingness. Importantly, a missing selected pollutant is supervised as \texttt{unavailable}, not replaced by an invented number.
+
+\begin{table}[t]
+\centering
+\caption{Selected source missingness, $N=9{,}357$ hours}
+\label{tab:missing}
+\begin{tabular}{lrr}
+\toprule
+Field & Missing hours & Proportion (\%)\\
+\midrule
+NMHC(GT) & 8,443 & 90.23\\
+CO(GT) & 1,683 & 17.99\\
+NO$_2$(GT) & 1,642 & 17.55\\
+NOx(GT) & 1,639 & 17.52\\
+C$_6$H$_6$(GT) & 366 & 3.91\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Chronological split and leakage control}
+Splitting occurs \emph{before} text-example creation. Consecutive source hours form training, validation, and held-out test sets, as in Table~\ref{tab:splits}. Both language tasks derived from the same hour remain within one split; record identifiers are disjoint. This reduces two forms of leakage: same-hour overlap and future-period data influencing training-label thresholds. It does not remove all temporal autocorrelation or distribution shift.
+
+\begin{table}[t]
+\centering
+\caption{Chronological split and instruction count}
+\label{tab:splits}
+\begin{tabular}{lrrr}
+\toprule
+Partition & Hours & Examples & Hours (\%)\\
+\midrule
+Train & 6,549 & 13,098 & 69.99\\
+Validation & 1,404 & 2,808 & 15.00\\
+Test & 1,404 & 2,808 & 15.00\\
+\midrule
+Total & 9,357 & 18,714 & 100.00\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The train period runs from 10 March to 8 December 2004, the validation period from 8 December 2004 to 5 February 2005, and the test period from 5 February to 4 April 2005. Exact boundary timestamps and SHA-256 split hashes are recorded in the public metadata file \cite{datasetrepo}.
+
+\subsection{Training-only quartile supervision}
+For each pollutant $p$, the 25th and 75th percentile thresholds, $Q_{.25,p}^{\mathrm{train}}$ and $Q_{.75,p}^{\mathrm{train}}$, are fitted only on nonmissing \emph{training} values. The fixed function for any subsequent sample is
+\begin{equation}
+\ell_p(x)=\begin{cases}
+\mathrm{unavailable}, & x\text{ missing},\\
+\mathrm{low}, & x<Q_{.25,p}^{\mathrm{train}},\\
+\mathrm{elevated}, & x>Q_{.75,p}^{\mathrm{train}},\\
+\mathrm{typical}, & \text{otherwise}.
+\end{cases}
+\end{equation}
+The observed threshold pairs are CO $(1.1,2.8)$ mg/m$^3$, NO$_2$ $(69,123)$ $\mu$g/m$^3$, and benzene $(5.1,14.6)$ $\mu$g/m$^3$. Boundary values are categorized as \emph{typical}. These labels are not medical limits, regulatory bands, or official AQI categories.
+
+\subsection{Instruction generation}
+Each historical hour yields one \emph{classify} and one \emph{explain} prompt, giving $2\times9{,}357=18{,}714$ supervised examples. The classification target has the syntax \texttt{CO: <label>; NO2: <label>; benzene: <label>.} The explanation target is a single controlled sentence with the same three labels. Every row preserves a timestamp, source-hour record ID, task identifier, input text, and target text. The label generator is a deterministic supervised-data preparation step, \emph{not} neural inference.
+
+\section{Phase II: Custom Small Language Model}
+\subsection{Architecture}
+The implemented decoder-only model has token embeddings, three causal Transformer blocks, RMSNorm, RoPE, grouped-query attention with query/key normalization, SwiGLU feed-forward networks, and a tied output projection. Table~\ref{tab:model} records the checkpoint's configuration. The vocabulary is from \texttt{Qwen/Qwen3-8B}; all neural weights were randomly initialized and subsequently trained on the instruction dataset.
+
+\begin{table}[t]
+\centering
+\caption{Trained model configuration}
+\label{tab:model}
+\begin{tabular}{lr}
+\toprule
+Property & Value\\
+\midrule
+Total unique parameters & 30,301,632\\
+Vocabulary size & 151,669\\
+Hidden width / layers & 192 / 3\\
+Query / key--value heads & 6 / 2\\
+Feed-forward width & 512\\
+Maximum sequence length & 160\\
+Optimizer updates & 4,000\\
+Batch size / gradient accumulation & 2 / 2\\
+Pretrained neural weights & None\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The token-embedding matrix alone contains $151{,}669\times192=29{,}120{,}448$ learned values, or approximately \textbf{96.1\%} of the model's unique parameter count. This is a useful architecture caveat: the lexical embedding dominates the parameter budget, while the comparatively small Transformer stack learns the contextual computations. Weight tying avoids a second vocabulary-sized output matrix.
+
+\subsection{Training, published artifacts, and reproducibility}
+The recorded run completed 4,000 optimizer updates with 13,098 training, 2,808 validation, and 2,808 held-out test examples loaded. The custom model checkpoint is published as \texttt{model.pt} with \texttt{model\_config.json}, tokenizer files, executable architecture source, an inference example, a training plot, and \texttt{metrics.json} \cite{modelrepo}. An independent CPU check downloaded these public files and performed strict PyTorch state-dictionary loading. Unlike standard pretrained Transformer repositories, this custom implementation is not directly loadable by \texttt{AutoModelForCausalLM.from\_pretrained}. The old FLAN-T5 files in the source repository are historical prototypes, not the source of the published weights.
+
+\section{Results and Statistical Interpretation}
+\subsection{Recorded model losses}
+The recorded best sampled validation loss was $0.002819679$, full validation cross-entropy $0.009190715$, and held-out test cross-entropy $0.008156747$. The differences between sampled and full validation should not be interpreted as improvements or statistical significance without matching evaluation protocols. Most importantly, the held-out test cross-entropy is \emph{not} an independently computed exact-match, classification-accuracy, or confidence-calibration measure. The corpus contains constrained, largely formulaic targets, which limits the strength of a low language-model loss as evidence of real-world capability.
+
+\subsection{Six selected prompt cases}
+Three intended-use prompts (complete readings, a missing benzene field, and a constrained explanation) all passed under model-only inference. An all-missing case also passed. The raw SLM failed two selected negative cases: malformed measurement fields and a request for tomorrow's official AQI plus exercise-safety advice. After adding a deterministic guardrail, the first was rejected as malformed and the second as unsupported, \emph{without calling the model}. Table~\ref{tab:prompt} states the paired outcome.
+
+\begin{table}[t]
+\centering
+\caption{Paired evaluation on six hand-selected cases}
+\label{tab:prompt}
+\begin{tabular}{lcc}
+\toprule
+Case & Raw model & Safe-inference pipeline\\
+\midrule
+P1: complete readings & PASS & PASS\\
+P2: missing benzene & PASS & PASS\\
+P3: historical explanation & PASS & PASS\\
+N1: all readings missing & PASS & PASS\\
+N2: malformed readings & FAIL & PASS (rejected)\\
+N3: AQI/health forecast & FAIL & PASS (rejected)\\
+\midrule
+\textbf{Selected total} & \textbf{4/6} & \textbf{6/6}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The observed descriptive increase is from $66.7\%$ to $100\%$ on \emph{these cases} (a difference of 33.3 percentage points), not a population generalization result. There are only two discordant pairs and the cases were intentionally selected; no persuasive inferential significance or deployment reliability follows. Nine offline validator unit tests also passed. The standalone CPU process independently reproduced all six selected tests with exit code 0 on 15 November 2026. The model parameters were unchanged by the safety-layer addition.
+
+\subsection{Input validation, abstention, and risks}
+The guarded inference path permits only two historical instruction templates and timestamps from 10 March 2004 through 4 April 2005. It checks units (CO in mg/m$^3$; NO$_2$ and benzene in $\mu$g/m$^3$), finite nonnegative numeric values, and the special missing marker. Invalid inputs receive a deterministic rejection before inference. Accepted model outputs must match a strict three-pollutant schema and agree with the missing/nonmissing status of each field; otherwise the wrapper abstains.
+
+This is a \emph{format, scope and missingness} filter, not an independent classifier of valid readings. A plausibly formatted but incorrectly categorized generated label may still pass the guard. The system is not suitable for medical advice, environmental compliance, or real-time hazard alerts.
+
+\section{Deployment and Ollama Compatibility}
+The published runtime is the custom PyTorch loader and standalone \texttt{safe\_inference.py} CLI. Its public checkpoint is \emph{not} itself a GGUF model. Ollama's documented import mechanism accepts compatible GGUF artifacts or supported Safetensors architectures; simply pointing its \texttt{Modelfile} at the existing custom \texttt{model.pt} cannot establish working Ollama inference \cite{ollama}. A Qwen3-compatible tensor mapping and a llama.cpp conversion would require model-specific validation and output-parity testing. An Ollama import/chat demonstration had \textbf{not been verified} at the time of this draft. Until it is, the reproducible live demonstration is the original guarded PyTorch CLI rather than a substituted, falsely attributed foundation model.
+
+\section{Limitations and Future Work}
+This educational study has several threats to validity: (i) a historical single-monitoring-context dataset may contain sensor drift, (ii) quartile-defined synthetic labels are not expert-annotated health outcomes, (iii) the short, selected prompt suite does not quantify out-of-distribution robustness, (iv) a large embedding-to-transformer parameter ratio limits representational capacity, (v) complete held-out exact-match/classification accuracy, runtime latency and repeated-seed variance were not reported, and (vi) the present Ollama import and Streamlit migration remain unverified. Future work should publish the exact completed training notebook and environment, perform full held-out generation evaluation, check classwise error rates and missingness strata, compare multiple seeds, and test GGUF conversion against numerically matched PyTorch predictions.
+
+\section{Conclusion}
+An auditable data pipeline transformed 9,357 historical observations into 18,714 time-separated, training-quartile-labeled instruction examples. A custom 30.3M-parameter decoder-only SLM was trained from random weights and published with measured validation/test cross-entropies. The raw model succeeded on four of six selected cases; a separate validation layer enabled all six selected checks to pass by rejecting unsupported input while leaving neural weights intact. The principal result is a clear separation between reproducible preprocessing, learned generation and limited application-level safeguards, not a claim to official AQI prediction or production readiness.
+
+\begin{thebibliography}{99}
+\bibitem{uci} S. De Vito, ``Air Quality,'' UCI Machine Learning Repository, 2008, doi: 10.24432/C59K5F. [Online]. Available: \url{https://archive.ics.uci.edu/dataset/360/air+quality}
+\bibitem{devito} S. De Vito, E. Massera, M. Piga, L. Martinotto, and G. Di Francia, ``On field calibration of an electronic nose for benzene estimation in an urban pollution monitoring scenario,'' \emph{Sensors and Actuators B: Chemical}, vol. 129, no. 2, pp. 750--757, 2008, doi: 10.1016/j.snb.2007.09.060.
+\bibitem{vaswani} A. Vaswani \emph{et al.}, ``Attention Is All You Need,'' in \emph{Advances in Neural Information Processing Systems}, vol. 30, 2017.
+\bibitem{roformer} J. Su \emph{et al.}, ``RoFormer: Enhanced Transformer with Rotary Position Embedding,'' arXiv:2104.09864, 2021.
+\bibitem{gqa} J. Ainslie \emph{et al.}, ``GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints,'' in \emph{Proc. EMNLP}, 2023, doi: 10.18653/v1/2023.emnlp-main.298.
+\bibitem{rmsnorm} B. Zhang and R. Sennrich, ``Root Mean Square Layer Normalization,'' in \emph{Advances in Neural Information Processing Systems}, vol. 32, 2019.
+\bibitem{qwen} Qwen Team, ``Qwen3 Technical Report,'' arXiv:2505.09388, 2025.
+\bibitem{datasetrepo} P. C. Pradhan, ``AirQuality-SLM-Processed,'' Hugging Face Datasets, 2026. [Online]. Available: \url{https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed}
+\bibitem{modelrepo} P. C. Pradhan, ``AirQuality-SLM-Scratch-Qwen,'' Hugging Face Models, 2026. [Online]. Available: \url{https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen}
+\bibitem{source} P. C. Pradhan, ``AirQuality-SLM-DT,'' GitHub repository, 2026. [Online]. Available: \url{https://github.com/DSGAMING98/AirQuality-SLM-DT}
+\bibitem{ollama} Ollama, ``Importing models,'' documentation, accessed Nov. 18, 2026. [Online]. Available: \url{https://github.com/ollama/ollama/blob/main/docs/import.mdx}
+\end{thebibliography}
+\balance
+\end{document}

@@ -1,26 +1,72 @@
 # AirQuality SLM
-### Applying Design Thinking to Build a Small Language Model on the UCI Air Quality Dataset
+### From-scratch 30.3M-parameter Transformer, public Ollama model, and local two-model conversational assistant
 
-**Project status (15 November 2026):** The dataset validation and preprocessing pipeline is complete. A custom **30,301,632-parameter, decoder-only, Qwen-inspired Small Language Model (SLM) has been trained from scratch** and published. Its standalone safe-inference layer passed six selected live-checkpoint tests in an independent Python process. The existing Streamlit app in this GitHub branch is **legacy FLAN-T5 code**, not yet the verified interface for this model.
+[![Ollama](https://img.shields.io/badge/Ollama-Public_Model-111111?logo=ollama)](https://ollama.com/db0729713/airquality-slm)
+[![Hugging%20Face](https://img.shields.io/badge/Hugging%20Face-Model-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen)
+[![Dataset](https://img.shields.io/badge/Dataset-UCI_Air_Quality-2563EB)](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed)
+[![License](https://img.shields.io/badge/Model_Weights-Apache--2.0-16A34A)](https://ollama.com/db0729713/airquality-slm)
 
-This repository has **two distinct engineering phases**:
+**Latest project milestone (19 November 2026):** The original MiniQwen-inspired SLM has been trained **from random weights**, evaluated, converted to a working Ollama model, and **published** as [`db0729713/airquality-slm`](https://ollama.com/db0729713/airquality-slm). A separate *local* conversational application combines that classifier with the pretrained [Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) model via Ollama. The conversational integration and its launcher scripts remain in the local `codex/ollama-demo` workspace and **are not yet committed to this repository's `main` branch**.
 
-| Phase | Goal | Main deliverables | Status |
-|---|---|---|---|
-| **1. Data validation and preprocessing** | Turn historical sensor data into leakage-aware, auditable instruction/answer examples | `src/preprocess.py`, split CSVs, `dataset_info.json`, data tests, Hugging Face dataset | Complete |
-| **2. From-scratch SLM and safe inference** | Train a real language model on those examples, evaluate it and guard against unsupported requests | `airquality_slm_model.py`, published `model.pt`, `metrics.json`, `safe_inference.py`, safety tests | Trained and independently tested |
+> **Scientific boundary:** `low`, `typical`, and `elevated` are labels **relative to the historical training distribution**, *not* official Air Quality Index categories, regulatory limits, medical advice, or a live air-quality forecast.
 
-> **Not an official AQI system.** Labels such as *low*, *typical* and *elevated* are **relative to training-set quartiles**. The system does not provide real-time readings, future forecasts, legal air-quality grades, source attribution or health-safety decisions.
+## Run the public model with Ollama
+
+Install [Ollama](https://ollama.com/download), then run:
+
+```powershell
+ollama run db0729713/airquality-slm
+```
+
+This command downloads the **original scratch-trained classifier (Model A)**. It is **not a general-purpose conversational assistant**. For a meaningful test, paste a supported historical instruction into the Ollama prompt:
+
+```text
+Classify these historical air-quality measurements as low, typical, elevated or unavailable relative to training-distribution quartiles. Hour: 2005-03-08T08:00:00. CO: 3.40 mg/m3; NO2: 182.00 ug/m3; benzene: 18.30 ug/m3.
+```
+
+Expected response for that verified example:
+
+```text
+CO: elevated; NO2: elevated; benzene: elevated.
+```
+
+Type `/bye` to leave the interactive Ollama session. The standalone public model generates task-specific text; the Python application adds input validation, missing-value safeguards, routing, and conversational context. Do not assume the bare `ollama run` command includes all application-level guardrails.
+
+## Run the full conversational assistant (local development workspace)
+
+The **two-model** system was reported as tested locally on Windows with an RTX 4060 8 GB GPU. From the existing project directory **containing the as-yet-unmerged launcher files**, use:
+
+```powershell
+ollama pull db0729713/airquality-slm
+ollama pull qwen2.5:1.5b
+
+# In the local development folder with the conversational scripts:
+.\launch_conversational.ps1       # Terminal chat
+.\launch_conversational_ui.ps1    # Streamlit graphical chat
+```
+
+> **Repository availability:** The two `launch_conversational*.ps1` files, `conversational_airquality.py`, `conversational_streamlit.py`, and newer conversational verification documents are **local deliverables reported from the `codex/ollama-demo` workspace**, not files currently available from `git clone` of this `main` branch. To reproduce the *complete chatbot* from GitHub alone, those files and their dependencies must first be committed/pushed. The public Model A is already independently downloadable.
+
+### Project milestones
+
+| Phase | Contribution | Current status |
+|---|---|---|
+| **1. Data engineering** | Validate UCI data; chronological split; training-only quartiles; missingness handling | Published dataset |
+| **2. Original scratch SLM** | Custom 30.3M-parameter decoder-only Transformer; learned classification and explanation | Model checkpoint published on Hugging Face |
+| **3. Ollama deployment** | Weight-preserving export, corrected chat-template metadata, clean-pull verification | **Model A publicly available** |
+| **4. Conversation layer** | Qwen2.5-1.5B-Instruct, routing, conversation history, validation, CLI and Streamlit UI | **Locally verified; not merged to `main`** |
 
 ## Repository and published artifacts
 
 | Artifact | Location | What is verified |
 |---|---|---|
-| GitHub source and this documentation | [DSGAMING98/AirQuality-SLM-DT](https://github.com/DSGAMING98/AirQuality-SLM-DT) | Source, data pipeline, custom model class, CLI and tests |
-| Processed dataset | [prajwal90/AirQuality-SLM-Processed](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) | Published train/validation/test instructions |
-| Trained SLM | [prajwal90/AirQuality-SLM-Scratch-Qwen](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) | Published custom state dict, config, tokenizer, metrics and training plot |
-| Standalone release | [safe_inference.py](safe_inference.py) and [RELEASE_NOTES_v1.1.md](RELEASE_NOTES_v1.1.md) | Selected live test: **6/6**; validator unit tests: **9/9** |
-| Detailed dataset provenance | [DATASET_CARD.md](DATASET_CARD.md), [data/processed/dataset_info.json](data/processed/dataset_info.json) | Source audit, missingness, timestamps, split hashes |
+| GitHub source and documentation | [DSGAMING98/AirQuality-SLM-DT](https://github.com/DSGAMING98/AirQuality-SLM-DT) | Public data pipeline, custom architecture, checkpoint-loading code, and historical tests |
+| Public standalone Ollama model | [db0729713/airquality-slm](https://ollama.com/db0729713/airquality-slm) | Model A; original weights with corrected conversion template |
+| Processed dataset | [prajwal90/AirQuality-SLM-Processed](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) | Published temporal train/validation/test instruction splits |
+| Original PyTorch checkpoint | [prajwal90/AirQuality-SLM-Scratch-Qwen](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) | Custom state dict, config, tokenizer, metrics, training plot |
+| Original standalone validation | [safe_inference.py](safe_inference.py) and [RELEASE_NOTES_v1.1.md](RELEASE_NOTES_v1.1.md) | Selected prompt tests: **6/6**; initial validator tests: **9/9** |
+| Dataset provenance | [DATASET_CARD.md](DATASET_CARD.md), [data/processed/dataset_info.json](data/processed/dataset_info.json) | Timestamps, missingness, train-only thresholds, split hashes |
+| Conversational model (separate) | [Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) | Pretrained 1.5B-class instruction-tuned model, Apache-2.0; not the scratch model |
 
 ## System overview
 
@@ -344,11 +390,154 @@ Use `--model-dir PATH` for a trusted local model folder instead of downloading, 
 
 **Security note:** the loader imports the model repository's Python implementation, so only run code from sources/revisions you trust.
 
-## 2.7 Streamlit application status
+## 2.7 Application and repository status
 
-The GitHub `app.py` presently on `main` is **legacy**: it uses `AutoModelForSeq2SeqLM` with a FLAN-T5 model directory and does **not** load the trained custom MiniQwen state dict. It should not be presented as a verified v1.1 user interface or deployed unchanged.
+The existing `app.py` on GitHub `main` is **legacy FLAN-T5-era Streamlit code**. It does **not** load the published MiniQwen checkpoint and is **not** the verified conversational interface.
 
-The tested interface for the published checkpoint is **`safe_inference.py` (command line)**. A replacement Streamlit interface was prepared separately, but has not yet been committed to this repo or verified in the browser. A live Streamlit deployment URL has not been established.
+A separate local Streamlit application (`conversational_streamlit.py`) and command-line application (`conversational_airquality.py`) were developed and reported as validated in the `codex/ollama-demo` workspace, alongside the launchers listed above. The local Streamlit health check was reported as `ok`; that should not be confused with a remotely deployed public web application or with these files already being present on `main`.
+
+The original `safe_inference.py` CLI on `main` remains the directly available checkpoint test path.
+
+---
+
+# Phase 3: Ollama Conversion, Debugging, and Public Release
+
+## 3.1 Why a conversion layer was required
+
+The original `model.pt` is a custom PyTorch state dictionary, not a native Ollama model artifact. The deployment process used an experimental Qwen3-compatible export path and a GGUF conversion to make the trained model accessible to Ollama. The public model is a packaging/deployment of the **original trained SLM**, not a retraining or silent substitution with pretrained Qwen weights.
+
+The first Ollama import launched but produced malformed repetitions such as `low low` or `is is`, including on a supported classification example that previously worked in PyTorch. Import success alone was therefore **not** accepted as evidence of parity.
+
+## 3.2 Root cause: embedded prompt-template mismatch
+
+The debugging report identified the embedded Qwen3 ChatML-style template as the source of a **four-token input mismatch**:
+
+| Path | Prompt tokens for the diagnostic case | Observation |
+|---|---:|---|
+| Original training/inference framing | **88** | Correct targeted inference |
+| Initial Ollama embedded chat template | **92** | Repetitive or incorrect generation |
+| Corrected Ollama GGUF/template | Matched expected formatting | Selected regression suite passed |
+
+The template metadata was corrected while retaining the **same 35 tensor arrays**. This is a prompt-tokenization/serialization integration issue, **not** evidence of defective model weights. The original checkpoint and original GGUF were preserved.
+
+## 3.3 Published artifact and reported verification
+
+**Public model:** https://ollama.com/db0729713/airquality-slm
+
+The publication/verification report supplied for the local deployment records:
+
+| Item | Reported result |
+|---|---|
+| Ollama model namespace | `db0729713/airquality-slm` |
+| Model status | Publicly published |
+| Artifact download | Approximately **66 MB**, clean-pulled into an empty Ollama store |
+| Public manifest identifier (reported prefix) | `2ed62f4acb9b` |
+| License in published model | **Apache-2.0** |
+| Corrected prompt-template metadata | Preserved |
+| Clean-pulled Model A regression suite | **18/18** selected checks |
+| Original checkpoint and GGUF | Not overwritten |
+
+**Evidence distinction:** these are **results reported by the local integration/publication workflow**. The published Hugging Face checkpoint, dataset metadata and earlier unit tests are separately documented above. A selected **18/18** functional suite is *not* equivalent to full held-out classification accuracy, model robustness certification, or validated environmental-safety performance.
+
+The public Ollama registry distributes the standalone model artifact; it does **not** package the Python conversational router, application UI, or external Model B.
+
+# Phase 4: Genuine Multi-Turn Conversational System
+
+## 4.1 Two neural models, distinct responsibilities
+
+| Component | Original classification Model A | Conversation Model B |
+|---|---|---|
+| Model | `db0729713/airquality-slm` | `qwen2.5:1.5b` via Ollama |
+| Origin | Custom **trained from scratch** | **Pretrained + instruction-tuned** Qwen2.5-1.5B-Instruct |
+| Approximate scale | **30.3M** parameters | **1.54B** parameters (official model card) |
+| Responsibility | CO, NO2, benzene historical-relative labels / constrained explanation | Greetings, natural dialogue, explanations, follow-ups and short-term conversational context |
+| License | Apache-2.0 (reported published model artifact) | Apache-2.0 (upstream Qwen model card) |
+| Provenance | [Custom model checkpoint](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen) | [Official Qwen2.5 model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) |
+
+Model B is an **existing independently pretrained model**. The present implementation does **not** claim to have trained it from scratch, nor to have fine-tuned it on the AirQuality dataset. The original technical contribution remains Model A, the dataset pipeline, the Ollama conversion/debugging work, and the integration and validation architecture.
+
+## 4.2 Inference and routing architecture
+
+```mermaid
+flowchart TD
+    U["User message and recent conversation"] --> R{"Input validation and task routing"}
+    R -->|"Supported historical measurements"| V["Validate timestamp, fields, units and missingness"]
+    V -->|"Valid"| A["Model A: scratch-trained airquality-slm on Ollama"]
+    V -->|"Invalid"| X["Clarify / reject unsupported classification"]
+    A --> C["Validate structural and missingness consistency"]
+    C --> E["Return attributed classification"]
+    R -->|"Conversation or explanation"| B["Model B: qwen2.5:1.5b on Ollama"]
+    E --> B
+    B --> H["Context-aware, attributed natural-language reply"]
+    X --> H
+```
+
+This diagram depicts the **intended functional separation**. The router and validator are deterministic application components; conversational text originates from Model B, and in-scope classifications originate from Model A. A hardcoded FAQ reply must **not** be described as neural conversation.
+
+Example interactions:
+
+```text
+User: What are CO, NO2 and benzene?
+Conversational Model B: Explains the pollutants in ordinary language.
+
+User: Explain that as if I'm 10.
+Conversational Model B: Uses preceding context to simplify the explanation.
+
+User: Classify 2005-03-08T08:00:00, CO 3.40 mg/m3,
+      NO2 182 ug/m3, benzene 18.30 ug/m3.
+Classification Model A: CO: elevated; NO2: elevated; benzene: elevated.
+
+User: Does that mean it's officially unsafe outdoors?
+Guarded conversation: Explains that historical quartiles are not official safety thresholds.
+```
+
+The paraphrased conversational responses above are *illustrative interaction types*, not a verbatim test transcript.
+
+## 4.3 Local application, speed and test evidence
+
+The reported final local implementation includes the Python two-model router, multi-turn history management, a command-line interface and a Streamlit interface. The supplied local verification summary reports:
+
+| Verification scope | Reported result | What this means |
+|---|---:|---|
+| Final application unit suite | **22/22** | Selected integration/unit tests |
+| Model A Ollama regression checks | **18/18** | Selected classification, repeated inference and safety-path checks |
+| Conversational checks | **13/13** | Selected multi-turn dialogue, routing and follow-up scenarios |
+| Streamlit health check | `ok` | Local app health endpoint responded |
+| Model B throughput | **~140 generated tokens/sec** | Reported local measurement, not universal benchmark |
+
+The three test suites may exercise overlapping behavior and should **not** be treated as 53 independent evaluations of model accuracy. Throughput depends on device, generation length, quantization, concurrent load and Ollama configuration.
+
+Model A is optimized for narrow historical classification prompts and has a **160-token maximum context**; it should not be mistaken for the model responsible for multi-turn natural-language conversation. The app can use Model B's separate conversational context policy, subject to its configured runtime.
+
+## 4.4 Safety, limitations and attribution
+
+- The **`-200`** source sentinel always denotes unavailable measurement data, never a negative pollution concentration.
+- The classification categories come from **train-only quartiles** and do not represent an official AQI or guaranteed health safety.
+- The historical dataset covers **2004–2005**; the system cannot infer real-time air quality, current city conditions or future forecasts.
+- Input parsers and output validators can reject malformed, out-of-range and unsupported requests, but they **do not guarantee** that every neural category is numerically correct.
+- Model B can generate fluent but incorrect claims. Scientific claims require a defensible reference; conversation quality is not the same as environmental accuracy.
+- The user-facing application should identify when content comes from Model A, Model B, or deterministic application safeguards.
+
+## 4.5 Reproducing the public portion vs the local development portion
+
+**Available immediately from the public registry:**
+
+```powershell
+ollama run db0729713/airquality-slm
+```
+
+**In the original local project folder after installation of both models:**
+
+```powershell
+ollama pull db0729713/airquality-slm
+ollama pull qwen2.5:1.5b
+.\launch_conversational.ps1
+# or
+.\launch_conversational_ui.ps1
+```
+
+**Important:** the launcher commands require the additional *local, unmerged* scripts. A fresh clone of this GitHub `main` branch currently includes the older research pipeline and safe-inference CLI but **not** the complete two-model chatbot source. Full third-party reproducibility requires publishing that application code, version-pinned dependencies and verification reports.
+
 
 ---
 
@@ -360,7 +549,7 @@ The tested interface for the published checkpoint is **`safe_inference.py` (comm
 | **Define** | Translate numerical measurements into short factual, auditable descriptions without pretending they are official AQI or health assessments |
 | **Ideate** | Consider rule-only classification vs learned short text generation; use quartile targets for supervision, then implement a compact custom Transformer |
 | **Prototype** | Build timestamp-cleaning/splitting code, publish instruction examples, train MiniQwen from scratch, implement CLI inference |
-| **Test and iterate** | Audit source/splits, compute held-out losses, record six prompt outcomes, add pre-inference rejection and post-inference checks after observed failures |
+| **Test and iterate** | Audit source/splits, compute held-out losses, record selected prompt outcomes, correct the Ollama template mismatch, and verify two-model routing, dialogue and safety paths |
 
 This framing distinguishes **the deterministic data and label creation**, **the learned SLM**, and **the validation guardrails** as separate pieces of the product.
 
@@ -368,7 +557,7 @@ This framing distinguishes **the deterministic data and label creation**, **the 
 
 ```text
 AirQuality-SLM-DT/
-├── README.md                      # This current two-phase overview
+├── README.md                      # Four-phase research and deployment documentation
 ├── src/
 │   ├── preprocess.py              # Phase 1: validate/clean/split/label
 │   ├── train.py                   # Historical FLAN-T5 prototype, NOT MiniQwen training
@@ -395,11 +584,13 @@ AirQuality-SLM-DT/
 └── app.py                         # LEGACY FLAN-T5 Streamlit app, not v1.1-ready
 ```
 
-The large trained `model.pt` and tokenizer artifacts are hosted in the **Hugging Face model repository**, not in the GitHub source tree.
+The large trained `model.pt` and tokenizer artifacts are hosted in the **Hugging Face model repository**, not in the GitHub source tree. The public Ollama registry also hosts Model A as `db0729713/airquality-slm`.
+
+**Local files not yet on public `main` (as reported by the development workflow):** `conversational_airquality.py`, `conversational_streamlit.py`, `launch_conversational.ps1`, `launch_conversational_ui.ps1`, `CONVERSATIONAL_SLM_ARCHITECTURE.md`, `CONVERSATIONAL_VERIFICATION_REPORT.md`, and `OLLAMA_PUBLICATION_PREPARATION.md`. Their names are documented here for the local workspace, not falsely linked as committed files.
 
 ## Current vs historical repository documentation
 
-Some pre-v1.1 files such as `TRAINING_REPORT.md`, `EVALUATION_REPORT.md`, `MODEL_CARD.md`, `PROMPT_TEST_RESULTS.md`, `PROJECT_REPORT.md` and `REPRODUCIBILITY.md` were written for the **earlier unexecuted FLAN-T5 proposal**. Their descriptions of model training being blocked, no weights being published, or FLAN-T5 being the final architecture **are historical and do not describe the published MiniQwen run**. They have been left intact as development records; this README, `metrics.json`, `safe_inference.py`, and `RELEASE_NOTES_v1.1.md` describe the current experiment.
+Some pre-v1.1 files such as `TRAINING_REPORT.md`, `EVALUATION_REPORT.md`, `MODEL_CARD.md`, `PROMPT_TEST_RESULTS.md`, `PROJECT_REPORT.md` and `REPRODUCIBILITY.md` were written for the **earlier unexecuted FLAN-T5 proposal**. Their descriptions of model training being blocked, no weights being published, or FLAN-T5 being the final architecture **are historical and do not describe the published MiniQwen run**. They have been left intact as development records; this README, `metrics.json`, `safe_inference.py`, and `RELEASE_NOTES_v1.1.md` describe the published from-scratch experiment. The Ollama/publication/conversation sections above describe subsequent work and explicitly distinguish reported local results from files committed to `main`.
 
 ## Limitations and future work
 
@@ -409,10 +600,10 @@ Some pre-v1.1 files such as `TRAINING_REPORT.md`, `EVALUATION_REPORT.md`, `MODEL
 - **Small, from-scratch model:** susceptible to poor generalization and incorrect outputs on unseen numeric combinations, even when the format looks right.
 - **Guardrails are partial:** they enforce supported input shape, dates, units, missingness and output syntax, not ground-truth numerical correctness.
 - **Limited evaluation:** six chosen functional/robustness cases and loss values do not substitute for full held-out classification accuracy, multiple seeds, calibration or adversarial security testing.
-- **Deployment gap:** Streamlit app in `main` is legacy; browser and production performance have not been verified for the replacement interface.
+- **Repository synchronization gap:** The Streamlit app on `main` is legacy; a distinct local conversational UI passed a reported health check, but its code has not been committed to this public branch. No public hosting or end-to-end independent UI reproduction is established.
 - **Training provenance gap:** the actual from-scratch training notebook is separate from the old GitHub FLAN-T5 training script; a clean end-to-end training reproduction and archived environment should be added.
 
-**Future work:** publish the trained-model-specific reproducible notebook/scripts; evaluate exact-match and label accuracy over the full held-out set; run larger robustness suites and multiple seeds; test on new sensor periods; integrate safe inference into a new Streamlit UI; add quantization/latency measurements; and perform independent human review before any higher-stakes use.
+**Future work:** commit the tested conversational application, pinned dependencies and verification logs to a reviewable GitHub branch; publish the trained-model-specific reproduction notebook/scripts; evaluate exact-match and per-label accuracy on the full held-out set; run multiple seeds, OOD stress tests and numeric consistency checks; independently benchmark Ollama inference and GPU utilization; and seek domain review before any higher-stakes use.
 
 ## References
 
@@ -420,8 +611,11 @@ Some pre-v1.1 files such as `TRAINING_REPORT.md`, `EVALUATION_REPORT.md`, `MODEL
 2. De Vito et al., *On field calibration of an electronic nose for benzene estimation in an urban pollution monitoring scenario*, Sensors and Actuators B, 2008.
 3. [PyTorch](https://pytorch.org/) documentation, custom model definition, state dictionaries and causal attention.
 4. [Hugging Face Hub](https://huggingface.co/docs/hub/index) documentation, model repositories and tokenizer assets.
-5. [Qwen/Qwen3-8B tokenizer repository](https://huggingface.co/Qwen/Qwen3-8B) (tokenizer used; **pretrained model weights not used**).
+5. [Qwen/Qwen3-8B tokenizer repository](https://huggingface.co/Qwen/Qwen3-8B) (tokenizer used; **pretrained Model A weights not used**).
+6. [Qwen2.5-1.5B-Instruct model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) (separate instruction-tuned conversational Model B).
+7. [Ollama library](https://ollama.com/library) and [published AirQuality model](https://ollama.com/db0729713/airquality-slm).
+8. [Hugging Face processed AirQuality dataset](https://huggingface.co/datasets/prajwal90/AirQuality-SLM-Processed) and [original scratch checkpoint](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen).
 
 ---
 
-**Summary:** **Phase 1** validates and transforms 9,357 historical observations into 18,714 time-separated, quartile-labeled instruction examples. **Phase 2** trains a 30.3M-parameter, Qwen-inspired decoder-only SLM from scratch and adds a tested safe-inference wrapper. The main evidence is the published dataset, the real model checkpoint, recorded validation/test losses, and the independently executed 6/6 selected-case safety test. These are distinct deliverables and neither one should be confused with a fabricated official AQI predictor.
+**Summary:** **Phase 1** validates 9,357 historical observations and generates 18,714 chronologically separated training/evaluation examples. **Phase 2** trains a 30.3M-parameter Transformer from scratch with a validated safe-inference path. **Phase 3** fixes the Ollama prompt-template mismatch and publishes the original model under `db0729713/airquality-slm`. **Phase 4** uses a **separate pretrained Qwen2.5-1.5B-Instruct model** for genuine multi-turn conversation, plus deterministic routing and guardrails, currently available only in the local unmerged development workspace. Neither historical-relative classification nor conversational fluency should be confused with official AQI or verified health-safety advice.

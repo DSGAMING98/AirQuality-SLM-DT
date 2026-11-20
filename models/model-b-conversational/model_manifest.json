@@ -1,0 +1,12 @@
+{
+  "name": "Qwen2.5 1.5B Instruct AirQuality conversational configuration",
+  "role": "Model B",
+  "upstream_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "publisher": "Alibaba Cloud",
+  "parameters": 1540000000,
+  "quantization_in_ollama": "Q4_K_M",
+  "license": "Apache-2.0",
+  "ollama": "db0729713/airquality-slm:latest",
+  "weights_in_this_folder": false
+}
+

@@ -49,6 +49,7 @@ Complete two-model router from the project root:
 ## Attribution
 
 - Upstream model: <https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct>
+- Published Model B mirror: <https://huggingface.co/prajwal90/AirQuality-SLM-Model-B-Qwen2.5-1.5B-Instruct>
 - Ollama upstream package: <https://ollama.com/library/qwen2.5:1.5b>
 - License: Apache-2.0
 - AirQuality integration: <https://github.com/DSGAMING98/AirQuality-SLM-DT>

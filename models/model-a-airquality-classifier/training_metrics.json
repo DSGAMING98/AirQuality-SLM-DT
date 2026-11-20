@@ -1,0 +1,16 @@
+{
+  "experiment_mode": "full_splits_loaded",
+  "training_steps": 4000,
+  "gradient_accumulation_steps": 2,
+  "batch_size": 2,
+  "train_rows_loaded": 13098,
+  "validation_rows_loaded": 2808,
+  "test_rows_loaded": 2808,
+  "best_sampled_validation_loss": 0.0028196791417940403,
+  "full_validation_loss": 0.009190714808398668,
+  "heldout_test_loss": 0.00815674699743015,
+  "source_dataset": "prajwal90/AirQuality-SLM-Processed",
+  "tokenizer": "Qwen/Qwen3-8B",
+  "pretrained_model_weights_used": false
+}
+

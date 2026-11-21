@@ -605,6 +605,21 @@ Some pre-v1.1 files such as `TRAINING_REPORT.md`, `EVALUATION_REPORT.md`, `MODEL
 
 **Future work:** commit the tested conversational application, pinned dependencies and verification logs to a reviewable GitHub branch; publish the trained-model-specific reproduction notebook/scripts; evaluate exact-match and per-label accuracy on the full held-out set; run multiple seeds, OOD stress tests and numeric consistency checks; independently benchmark Ollama inference and GPU utilization; and seek domain review before any higher-stakes use.
 
+## Presentation release status and Ollama import (18 November 2026)
+
+**Assessment dates:** 19–20 November 2026. The from-scratch model and published dataset are available on Hugging Face; the tested **PyTorch safe-inference CLI** is the verified demonstration path. Direct Ollama import of the custom checkpoint has **not yet been verified**.
+
+**Experimental Ollama route (not a completed demo):**
+1. Download the original published \`model.pt\`, model code and tokenizer.
+2. Map native MiniQwen weights to Qwen3-compatible Hugging Face tensors, including the interleaved-to-split RoPE reordering.
+3. **Stop unless** the converted model reproduces native PyTorch next-token logits on selected historical instructions.
+4. Run \`llama.cpp\`'s \`convert_hf_to_gguf.py\`, then create an Ollama \`Modelfile\` using that actual GGUF.
+5. Run \`ollama create airquality-slm -f Modelfile\`, then \`ollama run airquality-slm\`, checking its outputs against the original model. This **must be tested on the user's machine**; it cannot be claimed completed from the current repository evidence.
+
+See [Ollama compatibility and chat demo guide](docs/OLLAMA_DEMO_GUIDE.md). A draft [IEEE conference-style research article source](research/AirQuality_SLM_IEEE_Research_Article.tex) is also included for the university assessment. Neither these experimental conversion instructions nor the draft manuscript imply IEEE publication or a verified Ollama import.
+
+**Outstanding code provenance:** \`src/train.py\` and \`src/evaluate.py\` are older FLAN-T5 examples. The completed MiniQwen training notebook should be archived separately before claiming the entire trained model can be reconstructed from GitHub alone.
+
 ## References
 
 1. UCI Machine Learning Repository, [Air Quality dataset (ID 360)](https://archive.ics.uci.edu/dataset/360/air+quality), DOI: [10.24432/C59K5F](https://doi.org/10.24432/C59K5F).

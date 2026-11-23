@@ -58,6 +58,21 @@ CO: elevated; NO2: elevated; benzene: elevated.
 The root project preserves the PyTorch checkpoint, tokenizer, conversion scripts and verified
 F16 GGUF. Large weights are not duplicated in this Git folder.
 
+## Converted artifacts
+
+The complete converted artifacts are hosted on Hugging Face because the weight files are too
+large for normal GitHub storage. Checksums and machine-readable metadata are in
+[`conversion_manifest.json`](conversion_manifest.json).
+
+| Artifact | Purpose | Download |
+|---|---|---|
+| `model.safetensors` | Qwen3-compatible Transformers export of Model A | [Hugging Face](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/model.safetensors) |
+| `airquality-miniqwen3-f16-ollama.gguf` | Production F16 GGUF for Ollama | [Hugging Face](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/airquality-miniqwen3-f16-ollama.gguf) |
+| `airquality-miniqwen3-f16.gguf` | Earlier diagnostic GGUF retained for reproducibility | [Hugging Face](https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/airquality-miniqwen3-f16.gguf) |
+
+`CONVERSION_PARITY.json` records the Transformers conversion parity checks. The production
+Ollama build is the file whose name ends in `-ollama.gguf`.
+
 ## Limitations
 
 This model is a narrow historical classifier, not a conversational assistant. Its labels are

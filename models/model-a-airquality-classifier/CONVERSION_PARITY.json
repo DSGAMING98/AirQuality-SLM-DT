@@ -1,0 +1,27 @@
+{
+  "source_repo": "prajwal90/AirQuality-SLM-Scratch-Qwen",
+  "source_checkpoint": "model.pt",
+  "source_model": "custom MiniQwen model, random initialization, 4000 training updates",
+  "parity_tests": [
+    {
+      "case": 1,
+      "prompt_tokens": 88,
+      "max_logit_abs_error": 3.337860107421875e-06,
+      "next_token_equal": true
+    },
+    {
+      "case": 2,
+      "prompt_tokens": 80,
+      "max_logit_abs_error": 6.67572021484375e-06,
+      "next_token_equal": true
+    },
+    {
+      "case": 3,
+      "prompt_tokens": 96,
+      "max_logit_abs_error": 7.152557373046875e-06,
+      "next_token_equal": true
+    }
+  ],
+  "parity_limit": 0.0001,
+  "warning": "HF logit parity does not establish llama.cpp / GGUF / Ollama parity."
+}

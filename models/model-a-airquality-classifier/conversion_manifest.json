@@ -1,0 +1,49 @@
+{
+  "model": "Model A - AirQuality MiniQwen classifier",
+  "hugging_face_repo": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen",
+  "production_ollama_artifact": "airquality-miniqwen3-f16-ollama.gguf",
+  "artifacts": [
+    {
+      "file": "config.json",
+      "bytes": 783,
+      "sha256": "e3380a5f421786ec3ab3d9ca44fc7e98aaf92e97db881b91f3ae12045bd03b27",
+      "role": "Qwen3-compatible architecture configuration",
+      "download": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/config.json"
+    },
+    {
+      "file": "generation_config.json",
+      "bytes": 96,
+      "sha256": "10237e38b90f45301aaec5de30e63f2b66664deee2277811f3a11df0d7efc283",
+      "role": "Transformers generation configuration",
+      "download": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/generation_config.json"
+    },
+    {
+      "file": "CONVERSION_PARITY.json",
+      "bytes": 764,
+      "sha256": "1f9696371864f903125f10f6358caafe2463b102135f3d05af2101117642edf2",
+      "role": "Transformers conversion parity results",
+      "download": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/CONVERSION_PARITY.json"
+    },
+    {
+      "file": "model.safetensors",
+      "bytes": 121210376,
+      "sha256": "732a6d06c176833f3cf5445964513ec2ff781278cdb258b161b526fec47fbc0a",
+      "role": "Qwen3-compatible Transformers weights converted from Model A",
+      "download": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/model.safetensors"
+    },
+    {
+      "file": "airquality-miniqwen3-f16-ollama.gguf",
+      "bytes": 66531392,
+      "sha256": "23dee1d186fd556f497b0d16af4c1f350b8de40fab0ef6f188ed8246f851dd72",
+      "role": "Production F16 GGUF for Ollama",
+      "download": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/airquality-miniqwen3-f16-ollama.gguf"
+    },
+    {
+      "file": "airquality-miniqwen3-f16.gguf",
+      "bytes": 66535136,
+      "sha256": "c91ddc86a8535284a080e05a4a4494ea26bf95b27e038c3d8e89d66325c7edb6",
+      "role": "Earlier diagnostic F16 GGUF retained for reproducibility",
+      "download": "https://huggingface.co/prajwal90/AirQuality-SLM-Scratch-Qwen/resolve/main/airquality-miniqwen3-f16.gguf"
+    }
+  ]
+}

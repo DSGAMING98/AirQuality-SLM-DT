@@ -1,0 +1,13 @@
+{
+  "name": "AirQuality MiniQwen classifier",
+  "role": "Model A",
+  "architecture": "custom MiniQwen-inspired decoder-only transformer",
+  "parameters": 30301632,
+  "training": "from random initialization",
+  "training_updates": 4000,
+  "tokenizer": "Qwen3 tokenizer; no pretrained Qwen weights",
+  "context_length": 160,
+  "ollama": "db0729713/airquality-slm:classifier",
+  "hugging_face": "prajwal90/AirQuality-SLM-Scratch-Qwen"
+}
+
